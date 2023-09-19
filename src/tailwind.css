@@ -1,0 +1,27 @@
+@font-face {
+    font-family: 'Final Fantasy VI SNESa';
+    font-weight: 600;
+    src: url('./fonts/Final Fantasy VI SNESa.ttf') format('truetype');
+    font-style: normal;
+  }
+  
+  
+  
+  @tailwind base;
+  @tailwind components;
+  @tailwind utilities;
+  
+  html,
+  body {
+    @apply m-0 p-0 w-full h-full bg-slate-400
+  }
+  
+  body {
+    width: 100%;
+  }
+
+.pixel-art {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
