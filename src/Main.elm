@@ -7,6 +7,7 @@ import Browser
 import Browser.Events exposing (Visibility(..), onAnimationFrameDelta, onKeyDown, onKeyUp, onVisibilityChange)
 import Canvas exposing (Point, rect, shapes)
 import Canvas.Settings exposing (fill, stroke)
+import Canvas.Settings.Advanced
 import Canvas.Settings.Text exposing (TextAlign(..), align, font)
 import Canvas.Texture exposing (sprite)
 import Color
@@ -28,6 +29,8 @@ type alias Model =
     , rightPressed : Bool
     , upPressed : Bool
     , downPressed : Bool
+    , cameraX : Float
+    , cameraY : Float
     }
 
 
@@ -39,8 +42,7 @@ type GameSetupStatus
 
 type alias Sprites =
     { cursor : Canvas.Texture.Texture
-    , sabin : Canvas.Texture.Texture
-    , rhobite : Canvas.Texture.Texture
+    , towerBase : Canvas.Texture.Texture
     }
 
 
@@ -55,6 +57,8 @@ initialModel seed =
     , rightPressed = False
     , upPressed = False
     , downPressed = False
+    , cameraX = 0
+    , cameraY = 0
     }
 
 
@@ -157,10 +161,15 @@ update msg model =
                         timePassedInt =
                             round timePassed
 
+                        ( cameraX, cameraY ) =
+                            updateCamera model
+
                         updatedModel =
                             { model
                                 | time = model.time + timePassedInt
                                 , gameSetupStatus = SetupComplete sprites
+                                , cameraX = cameraX
+                                , cameraY = cameraY
                             }
                     in
                     ( updatedModel, Cmd.none )
@@ -180,20 +189,12 @@ update msg model =
                                 , height = 32
                                 }
                                 texture
-                        , sabin =
+                        , towerBase =
                             Canvas.Texture.sprite
-                                { x = 20
-                                , y = 62
-                                , width = 16
-                                , height = 24
-                                }
-                                texture
-                        , rhobite =
-                            Canvas.Texture.sprite
-                                { x = 140
-                                , y = 200
-                                , width = 32
-                                , height = 32
+                                { x = 5
+                                , y = 5
+                                , width = 608
+                                , height = 565
                                 }
                                 texture
                         }
@@ -245,46 +246,72 @@ update msg model =
                     ( { model | paused = False }, Cmd.none )
 
 
+updateCamera : Model -> ( Float, Float )
+updateCamera model =
+    if model.leftPressed then
+        ( model.cameraX + 1, model.cameraY )
+
+    else if model.rightPressed then
+        ( model.cameraX - 1, model.cameraY )
+
+    else if model.upPressed then
+        ( model.cameraX, model.cameraY + 1 )
+
+    else if model.downPressed then
+        ( model.cameraX, model.cameraY - 1 )
+
+    else
+        ( model.cameraX, model.cameraY )
+
+
 view : Model -> Html Msg
 view model =
-    case model.gameSetupStatus of
-        SettingUp ->
-            Canvas.toHtmlWith
-                { width = gameWidth
-                , height = gameHeight
-                , textures = [ Canvas.Texture.loadFromImageUrl "Sabin.png" TextureLoaded ]
-                }
-                []
-                [ Canvas.text
-                    [ font { size = 48, family = "sans-serif" }, align Center ]
-                    ( 50, 50 )
-                    "Loading textures..."
-                ]
+    div [ class "flex flex-row" ]
+        [ case model.gameSetupStatus of
+            SettingUp ->
+                Canvas.toHtmlWith
+                    { width = gameWidth
+                    , height = gameHeight
+                    , textures = [ Canvas.Texture.loadFromImageUrl "FFL-TowerBase.png" TextureLoaded ]
+                    }
+                    []
+                    [ Canvas.text
+                        [ font { size = 48, family = "sans-serif" }, align Center ]
+                        ( 50, 50 )
+                        "Loading textures..."
+                    ]
 
-        SetupFailed ->
-            Canvas.toHtmlWith
-                { width = gameWidth
-                , height = gameHeight
-                , textures = []
-                }
-                []
-                [ Canvas.text
-                    [ font { size = 48, family = "sans-serif" }, align Center ]
-                    ( 50, 50 )
-                    "Setup failed."
-                ]
+            SetupFailed ->
+                Canvas.toHtmlWith
+                    { width = gameWidth
+                    , height = gameHeight
+                    , textures = []
+                    }
+                    []
+                    [ Canvas.text
+                        [ font { size = 48, family = "sans-serif" }, align Center ]
+                        ( 50, 50 )
+                        "Setup failed."
+                    ]
 
-        SetupComplete sprites ->
-            Canvas.toHtmlWith
-                { width = gameWidth
-                , height = gameHeight
-                , textures = []
-                }
-                []
-                [ shapes
-                    [ fill (Color.rgb 0.85 0.92 1) ]
-                    [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
-                ]
+            SetupComplete sprites ->
+                Canvas.toHtmlWith
+                    { width = gameWidth
+                    , height = gameHeight
+                    , textures = []
+                    }
+                    [ class "block scale-[2] pixel-art" ]
+                    ([ shapes
+                        [ fill (Color.rgb 0.85 0.92 1) ]
+                        [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+                     ]
+                        ++ [ Canvas.texture
+                                [ Canvas.Settings.Advanced.imageSmoothing False ]
+                                ( model.cameraX, model.cameraY )
+                                sprites.towerBase
+                           ]
+                    )
+        ]
 
 
 
@@ -316,12 +343,12 @@ view model =
 
 gameWidth : Int
 gameWidth =
-    480
+    160
 
 
 gameHeight : Int
 gameHeight =
-    320
+    144
 
 
 gameWidthFloat : Float
