@@ -34,6 +34,8 @@ type alias Model =
     , cameraY : Float
     , characterX : Float
     , characterY : Float
+    , characterRow : Int
+    , characterCol : Int
     , characterFacingDirection : FacingDirection
     , characterFrameTime : Int
     , characterFrame : Int
@@ -83,6 +85,8 @@ initialModel seed =
     , cameraY = 0
     , characterX = 72
     , characterY = 64
+    , characterRow = 4
+    , characterCol = 4
     , characterFacingDirection = South
     , characterFrameTime = 0
     , characterFrame = 0
@@ -101,6 +105,14 @@ type Direction
     | DownReleased
     | EnterPressed
     | EnterReleased
+    | WPressed
+    | WReleased
+    | APressed
+    | AReleased
+    | SPressed
+    | SReleased
+    | DPressed
+    | DReleased
     | Other
 
 
@@ -131,6 +143,18 @@ toDirectionPressed string =
         "Enter" ->
             MoveCursor EnterPressed
 
+        "w" ->
+            MoveCursor WPressed
+
+        "a" ->
+            MoveCursor APressed
+
+        "s" ->
+            MoveCursor SPressed
+
+        "d" ->
+            MoveCursor DPressed
+
         _ ->
             MoveCursor Other
 
@@ -152,6 +176,18 @@ toDirectionReleased string =
 
         "Enter" ->
             MoveCursor EnterReleased
+
+        "w" ->
+            MoveCursor WReleased
+
+        "a" ->
+            MoveCursor AReleased
+
+        "s" ->
+            MoveCursor SReleased
+
+        "d" ->
+            MoveCursor DReleased
 
         _ ->
             MoveCursor Other
@@ -302,6 +338,9 @@ update msg model =
                         ( newCharacterFrameTime, newCharacterFrame ) =
                             updateCharacterFrameTime (model.characterFrameTime + timePassedInt) model.characterFrame
 
+                        ( newCharacterX, newCharacterY ) =
+                            updateCharacterXAndY model timePassed cameraX cameraY
+
                         updatedModel =
                             { model
                                 | time = model.time + timePassedInt
@@ -310,6 +349,8 @@ update msg model =
                                 , cameraY = cameraY
                                 , characterFrameTime = newCharacterFrameTime
                                 , characterFrame = newCharacterFrame
+                                , characterX = newCharacterX
+                                , characterY = newCharacterY
                             }
                     in
                     ( updatedModel, Cmd.none )
@@ -467,6 +508,70 @@ update msg model =
                 EnterReleased ->
                     ( model, Cmd.none )
 
+                WPressed ->
+                    let
+                        canMoveNorth =
+                            case getCell (Row (model.characterRow - 1)) (Col model.characterCol) model.world of
+                                Just tileType ->
+                                    if tileType == Walkable then
+                                        True
+
+                                    else
+                                        False
+
+                                Nothing ->
+                                    False
+
+                        _ =
+                            Debug.log "canMoveNorth" canMoveNorth
+                    in
+                    if canMoveNorth == True then
+                        ( { model | characterRow = model.characterRow - 1 }, Cmd.none )
+
+                    else
+                        ( model, Cmd.none )
+
+                WReleased ->
+                    ( model, Cmd.none )
+
+                APressed ->
+                    ( model, Cmd.none )
+
+                AReleased ->
+                    ( model, Cmd.none )
+
+                SPressed ->
+                    let
+                        canMoveSouth =
+                            case getCell (Row (model.characterRow + 1)) (Col model.characterCol) model.world of
+                                Just tileType ->
+                                    if tileType == Walkable then
+                                        True
+
+                                    else
+                                        False
+
+                                Nothing ->
+                                    False
+
+                        _ =
+                            Debug.log "canMoveSouth" canMoveSouth
+                    in
+                    if canMoveSouth == True then
+                        ( { model | characterRow = model.characterRow + 1 }, Cmd.none )
+
+                    else
+                        ( model, Cmd.none )
+
+                SReleased ->
+                    ( model, Cmd.none )
+
+                DPressed ->
+                    ( model, Cmd.none )
+
+                DReleased ->
+                    ( model, Cmd.none )
+
                 Other ->
                     ( model, Cmd.none )
 
@@ -517,6 +622,11 @@ updateCamera model timePassed =
 
     else
         ( model.cameraX, model.cameraY )
+
+
+updateCharacterXAndY : Model -> Float -> Float -> Float -> ( Float, Float )
+updateCharacterXAndY model timePassed cameraX cameraY =
+    ( toFloat model.characterCol * 16 + cameraX, toFloat model.characterRow * 16 + cameraY )
 
 
 updateCharacterFrameTime : Int -> Int -> ( Int, Int )
@@ -706,21 +816,6 @@ gameHeightFloat =
     toFloat gameHeight
 
 
-
--- drawEnemy : Sprites -> SpriteMonster -> Int -> List Canvas.Renderable
--- drawEnemy sprites spriteMonster index =
---     let
---         offsetIndex =
---             toFloat index + 0
---     in
---     [ Canvas.texture
---         []
---         -- ( 20, 40 + offsetIndex * 40 )
---         ( toFloat spriteMonster.x, toFloat spriteMonster.y )
---         sprites.rhobite
---     ]
-
-
 pauseButton : Bool -> Html Msg
 pauseButton paused =
     if paused == True then
@@ -728,72 +823,6 @@ pauseButton paused =
 
     else
         button [ onClick TogglePause ] [ Html.text "Pause" ]
-
-
-
--- drawMenu : Model -> BattleTimer -> Sprites -> List Canvas.Renderable
--- drawMenu model battleTimer sprites =
---     case model.battleState of
---         CharacterOrMonsterReady ->
---             [ shapes [ fill Color.blue ] [ rect ( 20, 200 ) 300 100 ]
---             , shapes [ stroke Color.white ] [ rect ( 20, 200 ) 300 100 ]
---             ]
---                 ++ List.map
---                     (\menuItem ->
---                         Canvas.text
---                             [ font { size = 26, family = "Final Fantasy VI SNESa" }, align Left, fill Color.white ]
---                             ( menuItem.x, menuItem.y )
---                             menuItem.text
---                     )
---                     model.menuItems
---         _ ->
---             [ shapes [ fill Color.blue ] [ rect ( 20, 200 ) 300 100 ]
---             , shapes [ stroke Color.white ] [ rect ( 20, 200 ) 300 100 ]
---             ]
--- drawCursor : Model -> Sprites -> List Canvas.Renderable
--- drawCursor model sprites =
---     case model.selectionTarget of
---         Nothing ->
---             []
---         -- type SelectionTarget
---         --     = MenuItemSelectionTarget MenuItem
---         --     | CharacterSelectionTarget SpriteCharacter
---         --     | MonsterSelectionTarget SpriteMonster
---         Just selectionTarget ->
---             case selectionTarget of
---                 MenuItemSelectionTarget menuItem ->
---                     [ Canvas.texture
---                         []
---                         ( menuItem.x - 32, menuItem.y - 13 )
---                         sprites.cursor
---                     ]
---                 CharacterSelectionTarget spriteCharacter ->
---                     [ Canvas.texture
---                         []
---                         ( spriteCharacter.x - 32, spriteCharacter.y - 13 )
---                         sprites.cursor
---                     ]
---                 MonsterSelectionTarget spriteMonster ->
---                     [ Canvas.texture
---                         []
---                         ( spriteMonster.x - 32, spriteMonster.y - 13 )
---                         sprites.cursor
---                     ]
--- drawDebug : Model -> List Canvas.Renderable
--- drawDebug model =
---     [ Canvas.text
---         [ font { size = 14, family = "sans-serif" }, align Left, fill Color.black ]
---         ( 200, 15 )
---         ("Battle State: "
---             ++ battleStateToString model.battleState
---         )
---     , Canvas.text
---         [ font { size = 14, family = "sans-serif" }, align Left, fill Color.black ]
---         ( 200, 30 )
---         ("Cursor Direction: "
---             ++ getCursorDirectionToString model
---         )
---     ]
 
 
 getCursorDirectionToString : Model -> String
