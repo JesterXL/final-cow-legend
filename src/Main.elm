@@ -554,6 +554,7 @@ gameWidth =
 
 
 -- 10 16x16 tiles
+-- 1st map is 608 pixels width, 512 walkable, 32 total tiles
 
 
 gameHeight : Int
@@ -563,6 +564,7 @@ gameHeight =
 
 
 -- 9 16x16 tiles
+-- 1st map is 565 pixels height, 560 walkable, 35 total tiles
 
 
 gameWidthFloat : Float
