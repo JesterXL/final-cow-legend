@@ -340,19 +340,11 @@ update msg model =
                         datPath =
                             findPath
                                 straightLineCost
-                                (\pos ->
-                                    case pos of
-                                        ( 0, 0 ) ->
-                                            Set.singleton ( 0, 1 ) |> Set.insert ( 1, 0 )
-
-                                        ( 1, 0 ) ->
-                                            Set.singleton ( 2, 0 ) |> Set.insert ( 1, 1 )
-
-                                        ( 0, 1 ) ->
-                                            Set.singleton ( 0, 2 ) |> Set.insert ( 1, 1 )
-
-                                        _ ->
-                                            Set.empty
+                                (\( x, y ) ->
+                                    Set.singleton ( x + 1, y )
+                                        |> Set.insert ( x, y + 1 )
+                                        |> Set.insert ( x - 1, y )
+                                        |> Set.insert ( x, y - 1 )
                                 )
                                 ( 0, 0 )
                                 ( 2, 0 )
