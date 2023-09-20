@@ -37,6 +37,7 @@ type alias Model =
     , characterFacingDirection : FacingDirection
     , characterFrameTime : Int
     , characterFrame : Int
+    , world : World
     }
 
 
@@ -85,6 +86,7 @@ initialModel seed =
     , characterFacingDirection = South
     , characterFrameTime = 0
     , characterFrame = 0
+    , world = defaultWorld
     }
 
 
@@ -158,6 +160,112 @@ toDirectionReleased string =
 keyDecoderReleased : Decode.Decoder Msg
 keyDecoderReleased =
     Decode.map toDirectionReleased (Decode.field "key" Decode.string)
+
+
+type alias World =
+    Array (Array TileType)
+
+
+type TileType
+    = Walkable
+    | NotWalkable
+
+
+defaultWorld : World
+defaultWorld =
+    Array.repeat 32 (Array.repeat 35 NotWalkable)
+        |> setCell (Row 0) (Col 0) NotWalkable
+        |> setCell (Row 1) (Col 0) NotWalkable
+        |> setCell (Row 2) (Col 0) NotWalkable
+        |> setCell (Row 3) (Col 0) NotWalkable
+        |> setCell (Row 4) (Col 0) NotWalkable
+        |> setCell (Row 5) (Col 0) NotWalkable
+        |> setCell (Row 6) (Col 0) NotWalkable
+        |> setCell (Row 7) (Col 0) NotWalkable
+        |> setCell (Row 0) (Col 1) NotWalkable
+        |> setCell (Row 1) (Col 1) NotWalkable
+        |> setCell (Row 2) (Col 1) NotWalkable
+        |> setCell (Row 3) (Col 1) NotWalkable
+        |> setCell (Row 4) (Col 1) NotWalkable
+        |> setCell (Row 5) (Col 1) NotWalkable
+        |> setCell (Row 6) (Col 1) NotWalkable
+        |> setCell (Row 7) (Col 1) NotWalkable
+        |> setCell (Row 0) (Col 2) NotWalkable
+        |> setCell (Row 1) (Col 2) NotWalkable
+        |> setCell (Row 2) (Col 2) NotWalkable
+        |> setCell (Row 3) (Col 2) NotWalkable
+        |> setCell (Row 4) (Col 2) NotWalkable
+        |> setCell (Row 5) (Col 2) NotWalkable
+        |> setCell (Row 6) (Col 2) NotWalkable
+        |> setCell (Row 7) (Col 2) NotWalkable
+        |> setCell (Row 0) (Col 3) NotWalkable
+        |> setCell (Row 1) (Col 3) NotWalkable
+        |> setCell (Row 2) (Col 3) NotWalkable
+        |> setCell (Row 3) (Col 3) NotWalkable
+        |> setCell (Row 4) (Col 3) NotWalkable
+        |> setCell (Row 5) (Col 3) NotWalkable
+        |> setCell (Row 6) (Col 3) NotWalkable
+        |> setCell (Row 7) (Col 3) NotWalkable
+        |> setCell (Row 0) (Col 4) NotWalkable
+        |> setCell (Row 1) (Col 4) NotWalkable
+        |> setCell (Row 2) (Col 4) NotWalkable
+        |> setCell (Row 3) (Col 4) NotWalkable
+        |> setCell (Row 4) (Col 4) NotWalkable
+        |> setCell (Row 5) (Col 4) NotWalkable
+        |> setCell (Row 6) (Col 4) NotWalkable
+        |> setCell (Row 7) (Col 4) NotWalkable
+        |> setCell (Row 0) (Col 5) NotWalkable
+        |> setCell (Row 1) (Col 5) NotWalkable
+        |> setCell (Row 2) (Col 5) NotWalkable
+        |> setCell (Row 3) (Col 5) NotWalkable
+        |> setCell (Row 4) (Col 5) Walkable
+        |> setCell (Row 5) (Col 5) Walkable
+        |> setCell (Row 6) (Col 5) Walkable
+        |> setCell (Row 7) (Col 5) Walkable
+
+
+type Row
+    = Row Int
+
+
+type Col
+    = Col Int
+
+
+getCell : Row -> Col -> World -> Maybe TileType
+getCell (Row row) (Col col) world =
+    -- let
+    --     _ =
+    --         Debug.log "getCell, row:" row
+    --     _ =
+    --         Debug.log "getCell, col:" col
+    -- in
+    Array.get row world
+        |> Maybe.andThen
+            (\rowItem ->
+                --     let
+                --         _ =
+                --             Debug.log "rowItem is:" rowItem
+                --     in
+                Array.get col rowItem
+            )
+
+
+setCell : Row -> Col -> TileType -> World -> World
+setCell (Row row) (Col col) newValue world =
+    Array.get row world
+        |> Maybe.andThen
+            (\rowList ->
+                let
+                    updatedRowList =
+                        Array.set col newValue rowList
+
+                    updatedWorld =
+                        Array.set row updatedRowList world
+                in
+                Just updatedWorld
+            )
+        |> Maybe.withDefault world
 
 
 type Msg
@@ -325,18 +433,6 @@ update msg model =
 
                 EnterPressed ->
                     let
-                        worldNow =
-                            [ ( 0, 0 )
-                            , ( 1, 0 )
-                            , ( 2, 0 )
-                            , ( 3, 0 )
-                            , ( 4, 0 )
-                            , ( 0, 1 )
-                            , ( 0, 2 )
-                            , ( 0, 3 )
-                            , ( 0, 4 )
-                            ]
-
                         datPath =
                             findPath
                                 straightLineCost
@@ -452,6 +548,7 @@ view model =
                                 sprites.towerBase
                            ]
                         ++ getCharacterFrame model sprites
+                        ++ drawWorld model
                     )
         ]
 
@@ -683,6 +780,36 @@ getCursorDirectionToString { leftPressed, rightPressed, upPressed, downPressed }
 
     else
         "None"
+
+
+drawWorld : Model -> List Canvas.Renderable
+drawWorld model =
+    [ Canvas.group
+        [ Canvas.Settings.Advanced.alpha 0.5, Canvas.Settings.Advanced.transform [ Canvas.Settings.Advanced.translate (-8 + model.cameraX) (-11 + model.cameraY) ] ]
+        (Array.indexedMap
+            (\rowIndex row ->
+                Array.indexedMap
+                    (\colIndex cell ->
+                        drawCell (Row rowIndex) (Col colIndex) cell
+                    )
+                    row
+                    |> Array.toList
+                    |> List.concatMap
+                        (\cell -> cell)
+            )
+            model.world
+            |> Array.toList
+            |> List.concatMap
+                (\cell -> cell)
+        )
+    ]
+
+
+drawCell : Row -> Col -> TileType -> List Canvas.Renderable
+drawCell (Row row) (Col col) tileType =
+    [ shapes [ fill Color.green ] [ rect ( (toFloat row + 1) * 16, (toFloat col + 1) * 16 ) 16 16 ]
+    , shapes [ stroke Color.lightGreen ] [ rect ( (toFloat row + 1) * 16, (toFloat col + 1) * 16 ) 16 16 ]
+    ]
 
 
 init : () -> ( Model, Cmd Msg )
