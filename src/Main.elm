@@ -339,7 +339,7 @@ update msg model =
                             updateCharacterFrameTime (model.characterFrameTime + timePassedInt) model.characterFrame
 
                         ( newCharacterX, newCharacterY ) =
-                            updateCharacterXAndY model timePassed cameraX cameraY
+                            updateCharacterXAndY model timePassed cameraX cameraY sprites.mainCharacterEast1
 
                         updatedModel =
                             { model
@@ -624,9 +624,11 @@ updateCamera model timePassed =
         ( model.cameraX, model.cameraY )
 
 
-updateCharacterXAndY : Model -> Float -> Float -> Float -> ( Float, Float )
-updateCharacterXAndY model timePassed cameraX cameraY =
-    ( toFloat model.characterCol * 16 + cameraX, toFloat model.characterRow * 16 + cameraY )
+updateCharacterXAndY : Model -> Float -> Float -> Float -> Canvas.Texture.Texture -> ( Float, Float )
+updateCharacterXAndY model timePassed cameraX cameraY characterTexture =
+    ( toFloat model.characterCol * 16 + cameraX + (Canvas.Texture.dimensions characterTexture).width / 2
+    , toFloat model.characterRow * 16 + cameraY + (Canvas.Texture.dimensions characterTexture).height / 6
+    )
 
 
 updateCharacterFrameTime : Int -> Int -> ( Int, Int )
