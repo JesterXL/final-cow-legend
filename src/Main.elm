@@ -173,7 +173,8 @@ type TileType
 
 defaultWorld : World
 defaultWorld =
-    Array.repeat 32 (Array.repeat 35 NotWalkable)
+    -- Array.repeat 32 (Array.repeat 35 NotWalkable)
+    Array.repeat 8 (Array.repeat 8 NotWalkable)
         |> setCell (Row 0) (Col 0) NotWalkable
         |> setCell (Row 1) (Col 0) NotWalkable
         |> setCell (Row 2) (Col 0) NotWalkable
@@ -210,18 +211,18 @@ defaultWorld =
         |> setCell (Row 1) (Col 4) NotWalkable
         |> setCell (Row 2) (Col 4) NotWalkable
         |> setCell (Row 3) (Col 4) NotWalkable
-        |> setCell (Row 4) (Col 4) NotWalkable
-        |> setCell (Row 5) (Col 4) NotWalkable
-        |> setCell (Row 6) (Col 4) NotWalkable
-        |> setCell (Row 7) (Col 4) NotWalkable
+        |> setCell (Row 4) (Col 4) Walkable
+        |> setCell (Row 5) (Col 4) Walkable
+        |> setCell (Row 6) (Col 4) Walkable
+        |> setCell (Row 7) (Col 4) Walkable
         |> setCell (Row 0) (Col 5) NotWalkable
         |> setCell (Row 1) (Col 5) NotWalkable
         |> setCell (Row 2) (Col 5) NotWalkable
         |> setCell (Row 3) (Col 5) NotWalkable
-        |> setCell (Row 4) (Col 5) Walkable
-        |> setCell (Row 5) (Col 5) Walkable
-        |> setCell (Row 6) (Col 5) Walkable
-        |> setCell (Row 7) (Col 5) Walkable
+        |> setCell (Row 4) (Col 5) NotWalkable
+        |> setCell (Row 5) (Col 5) NotWalkable
+        |> setCell (Row 6) (Col 5) NotWalkable
+        |> setCell (Row 7) (Col 5) NotWalkable
 
 
 type Row
@@ -433,6 +434,19 @@ update msg model =
 
                 EnterPressed ->
                     let
+                        datWorldString =
+                            Array.map
+                                debugTileRowToString
+                                model.world
+
+                        -- |> Array.foldl
+                        --     (\rowStr tileTypeString ->
+                        --         rowStr ++ tileTypeString ++ "\n"
+                        --     )
+                        --     ""
+                        _ =
+                            Debug.log "datWorldString" datWorldString
+
                         datPath =
                             findPath
                                 straightLineCost
@@ -463,6 +477,24 @@ update msg model =
 
                 Visible ->
                     ( { model | paused = False }, Cmd.none )
+
+
+debugTileRowToString : Array TileType -> String
+debugTileRowToString row =
+    Array.map
+        (\tileType ->
+            if tileType == Walkable then
+                " 0 "
+
+            else
+                " 1 "
+        )
+        row
+        |> Array.foldl
+            (\rowStr tileTypeString ->
+                rowStr ++ tileTypeString
+            )
+            ""
 
 
 updateCamera : Model -> Float -> ( Float, Float )
@@ -807,8 +839,15 @@ drawWorld model =
 
 drawCell : Row -> Col -> TileType -> List Canvas.Renderable
 drawCell (Row row) (Col col) tileType =
-    [ shapes [ fill Color.green ] [ rect ( (toFloat row + 1) * 16, (toFloat col + 1) * 16 ) 16 16 ]
-    , shapes [ stroke Color.lightGreen ] [ rect ( (toFloat row + 1) * 16, (toFloat col + 1) * 16 ) 16 16 ]
+    [ shapes
+        [ if tileType == Walkable then
+            fill Color.green
+
+          else
+            fill Color.red
+        ]
+        [ rect ( (toFloat col + 1) * 16, (toFloat row + 1) * 16 ) 16 16 ]
+    , shapes [ stroke Color.lightGreen ] [ rect ( (toFloat col + 1) * 16, (toFloat row + 1) * 16 ) 16 16 ]
     ]
 
 
