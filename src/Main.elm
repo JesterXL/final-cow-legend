@@ -31,7 +31,17 @@ type alias Model =
     , downPressed : Bool
     , cameraX : Float
     , cameraY : Float
+    , characterX : Float
+    , characterY : Float
+    , characterFacingDirection : FacingDirection
     }
+
+
+type FacingDirection
+    = North
+    | South
+    | East
+    | West
 
 
 type GameSetupStatus
@@ -43,6 +53,10 @@ type GameSetupStatus
 type alias Sprites =
     { cursor : Canvas.Texture.Texture
     , towerBase : Canvas.Texture.Texture
+    , mainCharacterSouth : Canvas.Texture.Texture
+    , mainCharacterNorth : Canvas.Texture.Texture
+    , mainCharacterWest : Canvas.Texture.Texture
+    , mainCharacterEast : Canvas.Texture.Texture
     }
 
 
@@ -59,6 +73,9 @@ initialModel seed =
     , downPressed = False
     , cameraX = 0
     , cameraY = 0
+    , characterX = 72
+    , characterY = 64
+    , characterFacingDirection = South
     }
 
 
@@ -162,7 +179,7 @@ update msg model =
                             round timePassed
 
                         ( cameraX, cameraY ) =
-                            updateCamera model
+                            updateCamera model timePassed
 
                         updatedModel =
                             { model
@@ -197,6 +214,38 @@ update msg model =
                                 , height = 565
                                 }
                                 texture
+                        , mainCharacterSouth =
+                            Canvas.Texture.sprite
+                                { x = 1
+                                , y = 903
+                                , width = 16
+                                , height = 16
+                                }
+                                texture
+                        , mainCharacterNorth =
+                            Canvas.Texture.sprite
+                                { x = 26
+                                , y = 903
+                                , width = 16
+                                , height = 16
+                                }
+                                texture
+                        , mainCharacterWest =
+                            Canvas.Texture.sprite
+                                { x = 50
+                                , y = 903
+                                , width = 16
+                                , height = 16
+                                }
+                                texture
+                        , mainCharacterEast =
+                            Canvas.Texture.sprite
+                                { x = 74
+                                , y = 903
+                                , width = 16
+                                , height = 16
+                                }
+                                texture
                         }
               }
             , Cmd.none
@@ -205,28 +254,28 @@ update msg model =
         MoveCursor direction ->
             case direction of
                 LeftPressed ->
-                    ( { model | leftPressed = True }, Cmd.none )
+                    ( { model | leftPressed = True, characterFacingDirection = West }, Cmd.none )
 
                 RightPressed ->
-                    ( { model | rightPressed = True }, Cmd.none )
+                    ( { model | rightPressed = True, characterFacingDirection = East }, Cmd.none )
 
                 LeftReleased ->
-                    ( { model | leftPressed = False }, Cmd.none )
+                    ( { model | leftPressed = False, characterFacingDirection = West }, Cmd.none )
 
                 RightReleased ->
-                    ( { model | rightPressed = False }, Cmd.none )
+                    ( { model | rightPressed = False, characterFacingDirection = East }, Cmd.none )
 
                 UpPressed ->
-                    ( { model | upPressed = True }, Cmd.none )
+                    ( { model | upPressed = True, characterFacingDirection = North }, Cmd.none )
 
                 UpReleased ->
-                    ( { model | upPressed = False }, Cmd.none )
+                    ( { model | upPressed = False, characterFacingDirection = North }, Cmd.none )
 
                 DownPressed ->
-                    ( { model | downPressed = True }, Cmd.none )
+                    ( { model | downPressed = True, characterFacingDirection = South }, Cmd.none )
 
                 DownReleased ->
-                    ( { model | downPressed = False }, Cmd.none )
+                    ( { model | downPressed = False, characterFacingDirection = South }, Cmd.none )
 
                 EnterPressed ->
                     ( model, Cmd.none )
@@ -246,19 +295,23 @@ update msg model =
                     ( { model | paused = False }, Cmd.none )
 
 
-updateCamera : Model -> ( Float, Float )
-updateCamera model =
+updateCamera : Model -> Float -> ( Float, Float )
+updateCamera model timePassed =
+    let
+        pixels =
+            10 / timePassed
+    in
     if model.leftPressed then
-        ( model.cameraX + 1, model.cameraY )
+        ( model.cameraX + pixels, model.cameraY )
 
     else if model.rightPressed then
-        ( model.cameraX - 1, model.cameraY )
+        ( model.cameraX - pixels, model.cameraY )
 
     else if model.upPressed then
-        ( model.cameraX, model.cameraY + 1 )
+        ( model.cameraX, model.cameraY + pixels )
 
     else if model.downPressed then
-        ( model.cameraX, model.cameraY - 1 )
+        ( model.cameraX, model.cameraY - pixels )
 
     else
         ( model.cameraX, model.cameraY )
@@ -300,7 +353,8 @@ view model =
                     , height = gameHeight
                     , textures = []
                     }
-                    [ class "block scale-[2] pixel-art" ]
+                    -- [ class "block scale-[2] pixel-art" ]
+                    [ class "block pixel-art" ]
                     ([ shapes
                         [ fill (Color.rgb 0.85 0.92 1) ]
                         [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
@@ -309,6 +363,23 @@ view model =
                                 [ Canvas.Settings.Advanced.imageSmoothing False ]
                                 ( model.cameraX, model.cameraY )
                                 sprites.towerBase
+                           ]
+                        ++ [ Canvas.texture
+                                [ Canvas.Settings.Advanced.imageSmoothing False ]
+                                ( model.characterX, model.characterY )
+                                (case model.characterFacingDirection of
+                                    North ->
+                                        sprites.mainCharacterNorth
+
+                                    South ->
+                                        sprites.mainCharacterSouth
+
+                                    East ->
+                                        sprites.mainCharacterEast
+
+                                    West ->
+                                        sprites.mainCharacterWest
+                                )
                            ]
                     )
         ]
@@ -346,9 +417,17 @@ gameWidth =
     160
 
 
+
+-- 10 16x16 tiles
+
+
 gameHeight : Int
 gameHeight =
     144
+
+
+
+-- 9 16x16 tiles
 
 
 gameWidthFloat : Float
