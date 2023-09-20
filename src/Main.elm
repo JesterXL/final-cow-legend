@@ -16,7 +16,6 @@ import Html.Attributes exposing (class, src, style)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Random
-import Time
 
 
 type alias Model =
@@ -34,6 +33,8 @@ type alias Model =
     , characterX : Float
     , characterY : Float
     , characterFacingDirection : FacingDirection
+    , characterFrameTime : Int
+    , characterFrame : Int
     }
 
 
@@ -53,10 +54,14 @@ type GameSetupStatus
 type alias Sprites =
     { cursor : Canvas.Texture.Texture
     , towerBase : Canvas.Texture.Texture
-    , mainCharacterSouth : Canvas.Texture.Texture
-    , mainCharacterNorth : Canvas.Texture.Texture
-    , mainCharacterWest : Canvas.Texture.Texture
-    , mainCharacterEast : Canvas.Texture.Texture
+    , mainCharacterSouth1 : Canvas.Texture.Texture
+    , mainCharacterSouth2 : Canvas.Texture.Texture
+    , mainCharacterNorth1 : Canvas.Texture.Texture
+    , mainCharacterNorth2 : Canvas.Texture.Texture
+    , mainCharacterWest1 : Canvas.Texture.Texture
+    , mainCharacterWest2 : Canvas.Texture.Texture
+    , mainCharacterEast1 : Canvas.Texture.Texture
+    , mainCharacterEast2 : Canvas.Texture.Texture
     }
 
 
@@ -76,6 +81,8 @@ initialModel seed =
     , characterX = 72
     , characterY = 64
     , characterFacingDirection = South
+    , characterFrameTime = 0
+    , characterFrame = 0
     }
 
 
@@ -181,12 +188,17 @@ update msg model =
                         ( cameraX, cameraY ) =
                             updateCamera model timePassed
 
+                        ( newCharacterFrameTime, newCharacterFrame ) =
+                            updateCharacterFrameTime (model.characterFrameTime + timePassedInt) model.characterFrame
+
                         updatedModel =
                             { model
                                 | time = model.time + timePassedInt
                                 , gameSetupStatus = SetupComplete sprites
                                 , cameraX = cameraX
                                 , cameraY = cameraY
+                                , characterFrameTime = newCharacterFrameTime
+                                , characterFrame = newCharacterFrame
                             }
                     in
                     ( updatedModel, Cmd.none )
@@ -214,7 +226,7 @@ update msg model =
                                 , height = 565
                                 }
                                 texture
-                        , mainCharacterSouth =
+                        , mainCharacterSouth1 =
                             Canvas.Texture.sprite
                                 { x = 1
                                 , y = 903
@@ -222,7 +234,15 @@ update msg model =
                                 , height = 16
                                 }
                                 texture
-                        , mainCharacterNorth =
+                        , mainCharacterSouth2 =
+                            Canvas.Texture.sprite
+                                { x = 1
+                                , y = 1022
+                                , width = 16
+                                , height = 16
+                                }
+                                texture
+                        , mainCharacterNorth1 =
                             Canvas.Texture.sprite
                                 { x = 26
                                 , y = 903
@@ -230,7 +250,15 @@ update msg model =
                                 , height = 16
                                 }
                                 texture
-                        , mainCharacterWest =
+                        , mainCharacterNorth2 =
+                            Canvas.Texture.sprite
+                                { x = 25
+                                , y = 1022
+                                , width = 16
+                                , height = 16
+                                }
+                                texture
+                        , mainCharacterWest1 =
                             Canvas.Texture.sprite
                                 { x = 50
                                 , y = 903
@@ -238,10 +266,26 @@ update msg model =
                                 , height = 16
                                 }
                                 texture
-                        , mainCharacterEast =
+                        , mainCharacterWest2 =
+                            Canvas.Texture.sprite
+                                { x = 74
+                                , y = 1021
+                                , width = 16
+                                , height = 16
+                                }
+                                texture
+                        , mainCharacterEast1 =
                             Canvas.Texture.sprite
                                 { x = 74
                                 , y = 903
+                                , width = 16
+                                , height = 16
+                                }
+                                texture
+                        , mainCharacterEast2 =
+                            Canvas.Texture.sprite
+                                { x = 50
+                                , y = 1022
                                 , width = 16
                                 , height = 16
                                 }
@@ -256,26 +300,26 @@ update msg model =
                 LeftPressed ->
                     ( { model | leftPressed = True, characterFacingDirection = West }, Cmd.none )
 
+                LeftReleased ->
+                    ( { model | leftPressed = False }, Cmd.none )
+
                 RightPressed ->
                     ( { model | rightPressed = True, characterFacingDirection = East }, Cmd.none )
 
-                LeftReleased ->
-                    ( { model | leftPressed = False, characterFacingDirection = West }, Cmd.none )
-
                 RightReleased ->
-                    ( { model | rightPressed = False, characterFacingDirection = East }, Cmd.none )
+                    ( { model | rightPressed = False }, Cmd.none )
 
                 UpPressed ->
                     ( { model | upPressed = True, characterFacingDirection = North }, Cmd.none )
 
                 UpReleased ->
-                    ( { model | upPressed = False, characterFacingDirection = North }, Cmd.none )
+                    ( { model | upPressed = False }, Cmd.none )
 
                 DownPressed ->
                     ( { model | downPressed = True, characterFacingDirection = South }, Cmd.none )
 
                 DownReleased ->
-                    ( { model | downPressed = False, characterFacingDirection = South }, Cmd.none )
+                    ( { model | downPressed = False }, Cmd.none )
 
                 EnterPressed ->
                     ( model, Cmd.none )
@@ -315,6 +359,19 @@ updateCamera model timePassed =
 
     else
         ( model.cameraX, model.cameraY )
+
+
+updateCharacterFrameTime : Int -> Int -> ( Int, Int )
+updateCharacterFrameTime characterFrameTime characterFrame =
+    if characterFrameTime > 200 then
+        if characterFrame == 0 then
+            ( 0, 1 )
+
+        else
+            ( 0, 0 )
+
+    else
+        ( characterFrameTime, characterFrame )
 
 
 view : Model -> Html Msg
@@ -364,25 +421,73 @@ view model =
                                 ( model.cameraX, model.cameraY )
                                 sprites.towerBase
                            ]
-                        ++ [ Canvas.texture
-                                [ Canvas.Settings.Advanced.imageSmoothing False ]
-                                ( model.characterX, model.characterY )
-                                (case model.characterFacingDirection of
-                                    North ->
-                                        sprites.mainCharacterNorth
-
-                                    South ->
-                                        sprites.mainCharacterSouth
-
-                                    East ->
-                                        sprites.mainCharacterEast
-
-                                    West ->
-                                        sprites.mainCharacterWest
-                                )
-                           ]
+                        ++ getCharacterFrame model sprites
                     )
         ]
+
+
+getCharacterFrame : Model -> Sprites -> List Canvas.Renderable
+getCharacterFrame model sprites =
+    case model.characterFacingDirection of
+        North ->
+            if model.characterFrame == 0 then
+                [ Canvas.texture
+                    [ Canvas.Settings.Advanced.imageSmoothing False ]
+                    ( model.characterX, model.characterY )
+                    sprites.mainCharacterNorth1
+                ]
+
+            else
+                [ Canvas.texture
+                    [ Canvas.Settings.Advanced.imageSmoothing False ]
+                    ( model.characterX, model.characterY )
+                    sprites.mainCharacterNorth2
+                ]
+
+        South ->
+            if model.characterFrame == 0 then
+                [ Canvas.texture
+                    [ Canvas.Settings.Advanced.imageSmoothing False ]
+                    ( model.characterX, model.characterY )
+                    sprites.mainCharacterSouth1
+                ]
+
+            else
+                [ Canvas.texture
+                    [ Canvas.Settings.Advanced.imageSmoothing False ]
+                    ( model.characterX, model.characterY )
+                    sprites.mainCharacterSouth2
+                ]
+
+        East ->
+            if model.characterFrame == 0 then
+                [ Canvas.texture
+                    [ Canvas.Settings.Advanced.imageSmoothing False ]
+                    ( model.characterX, model.characterY )
+                    sprites.mainCharacterEast1
+                ]
+
+            else
+                [ Canvas.texture
+                    [ Canvas.Settings.Advanced.imageSmoothing False ]
+                    ( model.characterX, model.characterY )
+                    sprites.mainCharacterEast2
+                ]
+
+        West ->
+            if model.characterFrame == 0 then
+                [ Canvas.texture
+                    [ Canvas.Settings.Advanced.imageSmoothing False ]
+                    ( model.characterX, model.characterY )
+                    sprites.mainCharacterWest1
+                ]
+
+            else
+                [ Canvas.texture
+                    [ Canvas.Settings.Advanced.imageSmoothing False ]
+                    ( model.characterX, model.characterY )
+                    sprites.mainCharacterWest2
+                ]
 
 
 
