@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import AStar exposing (findPath, straightLineCost)
 import Animator exposing (color)
 import Array exposing (Array)
 import Battle exposing (Attack(..), AttackMissesDeathProtectedTargets(..), BattlePower(..), CharacterStats, Defense(..), Element(..), EquippedRelics, Evade(..), Formation(..), Gold(..), HitPoints(..), HitRate(..), HitResult(..), Item(..), Level(..), MBlock(..), MagicDefense(..), MagicPoints(..), MagicPower(..), Monster(..), MonsterStats, PlayableCharacter, Relic(..), Speed(..), SpellPower(..), Stamina(..), Vigor(..), XP(..), dirk, fireSpell, getDamage, getHit, getRandomNumberFromRange, hitResultToString, lockeStats, lockeTarget, playableLocke, playableSabin, playableTerra, terraAttacker, terraStats)
@@ -16,6 +17,7 @@ import Html.Attributes exposing (class, src, style)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Random
+import Set
 
 
 type alias Model =
@@ -322,6 +324,42 @@ update msg model =
                     ( { model | downPressed = False }, Cmd.none )
 
                 EnterPressed ->
+                    let
+                        worldNow =
+                            [ ( 0, 0 )
+                            , ( 1, 0 )
+                            , ( 2, 0 )
+                            , ( 3, 0 )
+                            , ( 4, 0 )
+                            , ( 0, 1 )
+                            , ( 0, 2 )
+                            , ( 0, 3 )
+                            , ( 0, 4 )
+                            ]
+
+                        datPath =
+                            findPath
+                                straightLineCost
+                                (\pos ->
+                                    case pos of
+                                        ( 0, 0 ) ->
+                                            Set.singleton ( 0, 1 ) |> Set.insert ( 1, 0 )
+
+                                        ( 1, 0 ) ->
+                                            Set.singleton ( 2, 0 ) |> Set.insert ( 1, 1 )
+
+                                        ( 0, 1 ) ->
+                                            Set.singleton ( 0, 2 ) |> Set.insert ( 1, 1 )
+
+                                        _ ->
+                                            Set.empty
+                                )
+                                ( 0, 0 )
+                                ( 2, 0 )
+
+                        _ =
+                            Debug.log "datPath" datPath
+                    in
                     ( model, Cmd.none )
 
                 EnterReleased ->
