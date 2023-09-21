@@ -450,25 +450,25 @@ update msg model =
         MoveCursor direction ->
             case direction of
                 LeftPressed ->
-                    ( { model | leftPressed = True, characterFacingDirection = West }, Cmd.none )
+                    ( { model | leftPressed = True }, Cmd.none )
 
                 LeftReleased ->
                     ( { model | leftPressed = False }, Cmd.none )
 
                 RightPressed ->
-                    ( { model | rightPressed = True, characterFacingDirection = East }, Cmd.none )
+                    ( { model | rightPressed = True }, Cmd.none )
 
                 RightReleased ->
                     ( { model | rightPressed = False }, Cmd.none )
 
                 UpPressed ->
-                    ( { model | upPressed = True, characterFacingDirection = North }, Cmd.none )
+                    ( { model | upPressed = True }, Cmd.none )
 
                 UpReleased ->
                     ( { model | upPressed = False }, Cmd.none )
 
                 DownPressed ->
-                    ( { model | downPressed = True, characterFacingDirection = South }, Cmd.none )
+                    ( { model | downPressed = True }, Cmd.none )
 
                 DownReleased ->
                     ( { model | downPressed = False }, Cmd.none )
@@ -526,16 +526,16 @@ update msg model =
                             Debug.log "canMoveNorth" canMoveNorth
                     in
                     if canMoveNorth == True then
-                        ( { model | characterRow = model.characterRow - 1 }, Cmd.none )
+                        ( { model | characterRow = model.characterRow - 1, characterFacingDirection = North }, Cmd.none )
 
                     else
-                        ( model, Cmd.none )
+                        ( { model | characterFacingDirection = North }, Cmd.none )
 
                 WReleased ->
                     ( model, Cmd.none )
 
                 APressed ->
-                    ( model, Cmd.none )
+                    ( { model | characterFacingDirection = West }, Cmd.none )
 
                 AReleased ->
                     ( model, Cmd.none )
@@ -558,16 +558,16 @@ update msg model =
                             Debug.log "canMoveSouth" canMoveSouth
                     in
                     if canMoveSouth == True then
-                        ( { model | characterRow = model.characterRow + 1 }, Cmd.none )
+                        ( { model | characterRow = model.characterRow + 1, characterFacingDirection = South }, Cmd.none )
 
                     else
-                        ( model, Cmd.none )
+                        ( { model | characterFacingDirection = South }, Cmd.none )
 
                 SReleased ->
                     ( model, Cmd.none )
 
                 DPressed ->
-                    ( model, Cmd.none )
+                    ( { model | characterFacingDirection = East }, Cmd.none )
 
                 DReleased ->
                     ( model, Cmd.none )
