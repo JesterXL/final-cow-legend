@@ -311,6 +311,7 @@ type Msg
     | TextureLoaded (Maybe Canvas.Texture.Texture)
     | MoveCursor Direction
     | VisibilityChange Visibility
+    | LoadLevel
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -582,6 +583,13 @@ update msg model =
 
                 Visible ->
                     ( { model | paused = False }, Cmd.none )
+
+        LoadLevel ->
+            ( model, Cmd.none )
+
+
+
+---- Update bottom ----
 
 
 debugTileRowToString : Array TileType -> String
