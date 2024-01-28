@@ -312,6 +312,7 @@ type Msg
     | MoveCursor Direction
     | VisibilityChange Visibility
     | LoadLevel
+    | LoadLevelResult (Result String String)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -585,6 +586,13 @@ update msg model =
                     ( { model | paused = False }, Cmd.none )
 
         LoadLevel ->
+            ( model, Cmd.none )
+
+        LoadLevelResult result ->
+            let
+                _ =
+                    Debug.log "LoadLevelResult result" result
+            in
             ( model, Cmd.none )
 
 
