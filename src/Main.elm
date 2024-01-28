@@ -1,23 +1,49 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import AStar exposing (findPath, straightLineCost)
 import Animator exposing (color)
 import Array exposing (Array)
+import Base64.Encode as Base64Encode
 import Battle exposing (Attack(..), AttackMissesDeathProtectedTargets(..), BattlePower(..), CharacterStats, Defense(..), Element(..), EquippedRelics, Evade(..), Formation(..), Gold(..), HitPoints(..), HitRate(..), HitResult(..), Item(..), Level(..), MBlock(..), MagicDefense(..), MagicPoints(..), MagicPower(..), Monster(..), MonsterStats, PlayableCharacter, Relic(..), Speed(..), SpellPower(..), Stamina(..), Vigor(..), XP(..), dirk, fireSpell, getDamage, getHit, getRandomNumberFromRange, hitResultToString, lockeStats, lockeTarget, playableLocke, playableSabin, playableTerra, terraAttacker, terraStats)
 import Browser
 import Browser.Events exposing (Visibility(..), onAnimationFrameDelta, onKeyDown, onKeyUp, onVisibilityChange)
+import Bytes exposing (Bytes)
 import Canvas exposing (Point, rect, shapes)
-import Canvas.Settings exposing (fill, stroke)
+import Canvas.Settings as CanvasSettings exposing (fill, stroke)
 import Canvas.Settings.Advanced
 import Canvas.Settings.Text exposing (TextAlign(..), align, font)
-import Canvas.Texture exposing (sprite)
+import Canvas.Texture exposing (Texture, sprite)
 import Color
+import File exposing (File)
+import File.Select as Select
 import Html exposing (Html, button, div, img, text)
-import Html.Attributes exposing (class, src, style)
+import Html.Attributes exposing (class, src, style, type_)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Random
 import Set
+import Task exposing (Task)
+import Vector29
+import Vector31
+import Zip exposing (Zip)
+import Zip.Entry
+
+
+
+---- Ports ----
+
+
+port loadImageURL : String -> Cmd msg
+
+
+port onImageFromJavaScript : (Decode.Value -> msg) -> Sub msg
+
+
+port getCanvasBoundingRect : () -> Cmd msg
+
+
+port onCanvasBoundingRect : (Decode.Value -> msg) -> Sub msg
 
 
 type alias Model =
@@ -40,6 +66,7 @@ type alias Model =
     , characterFrameTime : Int
     , characterFrame : Int
     , world : World
+    , canvasBoundingRect : CanvasBoundingRect
     }
 
 
@@ -54,6 +81,15 @@ type GameSetupStatus
     = SettingUp
     | SetupComplete Sprites
     | SetupFailed
+    | MapDataLoaded { json : String, image : String, png : Bytes, sprites : Sprites }
+    | LevelLoaded
+        { sprites : Sprites
+        , mapImage : Texture
+        , offsetX : Float
+        , offsetY : Float
+        , tiles : World
+        , canvasScale : Float
+        }
 
 
 type alias Sprites =
@@ -68,6 +104,16 @@ type alias Sprites =
     , mainCharacterEast1 : Canvas.Texture.Texture
     , mainCharacterEast2 : Canvas.Texture.Texture
     }
+
+
+type alias World =
+    Vector29.Vector29 (Vector31.Vector31 TileType)
+
+
+defaultWorld : World
+defaultWorld =
+    Vector31.initializeFromInt (\_ -> NotWalkable)
+        |> Vector29.repeat
 
 
 initialModel : Random.Seed -> Model
@@ -91,6 +137,7 @@ initialModel seed =
     , characterFrameTime = 0
     , characterFrame = 0
     , world = defaultWorld
+    , canvasBoundingRect = { x = 0, y = 0, width = 0, height = 0 }
     }
 
 
@@ -198,111 +245,44 @@ keyDecoderReleased =
     Decode.map toDirectionReleased (Decode.field "key" Decode.string)
 
 
-type alias World =
-    Array (Array TileType)
-
-
 type TileType
     = Walkable
     | NotWalkable
 
 
-defaultWorld : World
-defaultWorld =
-    -- Array.repeat 32 (Array.repeat 35 NotWalkable)
-    Array.repeat 8 (Array.repeat 8 NotWalkable)
-        |> setCell (Row 0) (Col 0) NotWalkable
-        |> setCell (Row 1) (Col 0) NotWalkable
-        |> setCell (Row 2) (Col 0) NotWalkable
-        |> setCell (Row 3) (Col 0) NotWalkable
-        |> setCell (Row 4) (Col 0) NotWalkable
-        |> setCell (Row 5) (Col 0) NotWalkable
-        |> setCell (Row 6) (Col 0) NotWalkable
-        |> setCell (Row 7) (Col 0) NotWalkable
-        |> setCell (Row 0) (Col 1) NotWalkable
-        |> setCell (Row 1) (Col 1) NotWalkable
-        |> setCell (Row 2) (Col 1) NotWalkable
-        |> setCell (Row 3) (Col 1) NotWalkable
-        |> setCell (Row 4) (Col 1) NotWalkable
-        |> setCell (Row 5) (Col 1) NotWalkable
-        |> setCell (Row 6) (Col 1) NotWalkable
-        |> setCell (Row 7) (Col 1) NotWalkable
-        |> setCell (Row 0) (Col 2) NotWalkable
-        |> setCell (Row 1) (Col 2) NotWalkable
-        |> setCell (Row 2) (Col 2) NotWalkable
-        |> setCell (Row 3) (Col 2) NotWalkable
-        |> setCell (Row 4) (Col 2) NotWalkable
-        |> setCell (Row 5) (Col 2) NotWalkable
-        |> setCell (Row 6) (Col 2) NotWalkable
-        |> setCell (Row 7) (Col 2) NotWalkable
-        |> setCell (Row 0) (Col 3) NotWalkable
-        |> setCell (Row 1) (Col 3) NotWalkable
-        |> setCell (Row 2) (Col 3) NotWalkable
-        |> setCell (Row 3) (Col 3) NotWalkable
-        |> setCell (Row 4) (Col 3) NotWalkable
-        |> setCell (Row 5) (Col 3) NotWalkable
-        |> setCell (Row 6) (Col 3) NotWalkable
-        |> setCell (Row 7) (Col 3) NotWalkable
-        |> setCell (Row 0) (Col 4) NotWalkable
-        |> setCell (Row 1) (Col 4) NotWalkable
-        |> setCell (Row 2) (Col 4) NotWalkable
-        |> setCell (Row 3) (Col 4) NotWalkable
-        |> setCell (Row 4) (Col 4) Walkable
-        |> setCell (Row 5) (Col 4) Walkable
-        |> setCell (Row 6) (Col 4) Walkable
-        |> setCell (Row 7) (Col 4) Walkable
-        |> setCell (Row 0) (Col 5) NotWalkable
-        |> setCell (Row 1) (Col 5) NotWalkable
-        |> setCell (Row 2) (Col 5) NotWalkable
-        |> setCell (Row 3) (Col 5) NotWalkable
-        |> setCell (Row 4) (Col 5) NotWalkable
-        |> setCell (Row 5) (Col 5) NotWalkable
-        |> setCell (Row 6) (Col 5) NotWalkable
-        |> setCell (Row 7) (Col 5) NotWalkable
-
-
 type Row
-    = Row Int
+    = Row Vector29.Index
 
 
 type Col
-    = Col Int
+    = Col Vector31.Index
 
 
-getCell : Row -> Col -> World -> Maybe TileType
+getCell : Row -> Col -> World -> TileType
 getCell (Row row) (Col col) world =
-    -- let
-    --     _ =
-    --         Debug.log "getCell, row:" row
-    --     _ =
-    --         Debug.log "getCell, col:" col
-    -- in
-    Array.get row world
-        |> Maybe.andThen
-            (\rowItem ->
-                --     let
-                --         _ =
-                --             Debug.log "rowItem is:" rowItem
-                --     in
-                Array.get col rowItem
-            )
+    let
+        rowVector =
+            Vector29.get row world
+
+        tile =
+            Vector31.get col rowVector
+    in
+    tile
 
 
 setCell : Row -> Col -> TileType -> World -> World
 setCell (Row row) (Col col) newValue world =
-    Array.get row world
-        |> Maybe.andThen
-            (\rowList ->
-                let
-                    updatedRowList =
-                        Array.set col newValue rowList
+    let
+        rowVector =
+            Vector29.get row world
 
-                    updatedWorld =
-                        Array.set row updatedRowList world
-                in
-                Just updatedWorld
-            )
-        |> Maybe.withDefault world
+        updatedColVector =
+            Vector31.set col newValue rowVector
+
+        updatedRowVector =
+            Vector29.set row updatedColVector world
+    in
+    updatedRowVector
 
 
 type Msg
@@ -312,7 +292,10 @@ type Msg
     | MoveCursor Direction
     | VisibilityChange Visibility
     | LoadLevel
-    | LoadLevelResult (Result String String)
+    | LoadedLevel File
+    | GotZip (Maybe Zip)
+    | ImageLoadedFromJavaScript Decode.Value
+    | CanvasBoundingRectLoaded Decode.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -323,13 +306,7 @@ update msg model =
 
         Frame timePassed ->
             case model.gameSetupStatus of
-                SettingUp ->
-                    ( model, Cmd.none )
-
-                SetupFailed ->
-                    ( model, Cmd.none )
-
-                SetupComplete sprites ->
+                LevelLoaded { sprites } ->
                     let
                         timePassedInt =
                             round timePassed
@@ -346,7 +323,6 @@ update msg model =
                         updatedModel =
                             { model
                                 | time = model.time + timePassedInt
-                                , gameSetupStatus = SetupComplete sprites
                                 , cameraX = cameraX
                                 , cameraY = cameraY
                                 , characterFrameTime = newCharacterFrameTime
@@ -356,6 +332,9 @@ update msg model =
                             }
                     in
                     ( updatedModel, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
         TextureLoaded Nothing ->
             ( { model | gameSetupStatus = SetupFailed }, Cmd.none )
@@ -476,35 +455,32 @@ update msg model =
                     ( { model | downPressed = False }, Cmd.none )
 
                 EnterPressed ->
-                    let
-                        datWorldString =
-                            Array.map
-                                debugTileRowToString
-                                model.world
-
-                        -- |> Array.foldl
-                        --     (\rowStr tileTypeString ->
-                        --         rowStr ++ tileTypeString ++ "\n"
-                        --     )
-                        --     ""
-                        _ =
-                            Debug.log "datWorldString" datWorldString
-
-                        datPath =
-                            findPath
-                                straightLineCost
-                                (\( x, y ) ->
-                                    Set.singleton ( x + 1, y )
-                                        |> Set.insert ( x, y + 1 )
-                                        |> Set.insert ( x - 1, y )
-                                        |> Set.insert ( x, y - 1 )
-                                )
-                                ( 0, 0 )
-                                ( 2, 0 )
-
-                        _ =
-                            Debug.log "datPath" datPath
-                    in
+                    -- let
+                    --     datWorldString =
+                    --         Array.map
+                    --             debugTileRowToString
+                    --             model.world
+                    --     -- |> Array.foldl
+                    --     --     (\rowStr tileTypeString ->
+                    --     --         rowStr ++ tileTypeString ++ "\n"
+                    --     --     )
+                    --     --     ""
+                    --     _ =
+                    --         Debug.log "datWorldString" datWorldString
+                    --     datPath =
+                    --         findPath
+                    --             straightLineCost
+                    --             (\( x, y ) ->
+                    --                 Set.singleton ( x + 1, y )
+                    --                     |> Set.insert ( x, y + 1 )
+                    --                     |> Set.insert ( x - 1, y )
+                    --                     |> Set.insert ( x, y - 1 )
+                    --             )
+                    --             ( 0, 0 )
+                    --             ( 2, 0 )
+                    --     _ =
+                    --         Debug.log "datPath" datPath
+                    -- in
                     ( model, Cmd.none )
 
                 EnterReleased ->
@@ -513,16 +489,17 @@ update msg model =
                 WPressed ->
                     let
                         canMoveNorth =
-                            case getCell (Row (model.characterRow - 1)) (Col model.characterCol) model.world of
-                                Just tileType ->
-                                    if tileType == Walkable then
-                                        True
-
-                                    else
-                                        False
-
+                            case model.characterRow - 1 |> Vector29.intToIndex of
                                 Nothing ->
                                     False
+
+                                Just index29 ->
+                                    case model.characterCol |> Vector31.intToIndex of
+                                        Nothing ->
+                                            False
+
+                                        Just index31 ->
+                                            getCell (Row index29) (Col index31) model.world == Walkable
 
                         _ =
                             Debug.log "canMoveNorth" canMoveNorth
@@ -545,16 +522,17 @@ update msg model =
                 SPressed ->
                     let
                         canMoveSouth =
-                            case getCell (Row (model.characterRow + 1)) (Col model.characterCol) model.world of
-                                Just tileType ->
-                                    if tileType == Walkable then
-                                        True
-
-                                    else
-                                        False
-
+                            case model.characterRow + 1 |> Vector29.intToIndex of
                                 Nothing ->
                                     False
+
+                                Just index29 ->
+                                    case model.characterCol |> Vector31.intToIndex of
+                                        Nothing ->
+                                            False
+
+                                        Just index31 ->
+                                            getCell (Row index29) (Col index31) model.world == Walkable
 
                         _ =
                             Debug.log "canMoveSouth" canMoveSouth
@@ -586,18 +564,170 @@ update msg model =
                     ( { model | paused = False }, Cmd.none )
 
         LoadLevel ->
+            ( model, Select.file [ "application/zip" ] LoadedLevel )
+
+        LoadedLevel file ->
+            ( model, file |> File.toBytes |> Task.map Zip.fromBytes |> Task.perform GotZip )
+
+        GotZip Nothing ->
             ( model, Cmd.none )
 
-        LoadLevelResult result ->
+        GotZip (Just zip) ->
             let
-                _ =
-                    Debug.log "LoadLevelResult result" result
+                isMapPNG =
+                    \entry -> Zip.Entry.basename entry == "map.png"
+
+                isMapJSON =
+                    \entry -> Zip.Entry.basename entry == "map.json"
+
+                mapJSONMaybe =
+                    Zip.entries zip
+                        |> List.filter isMapJSON
+                        |> List.head
+
+                mapPNGMaybe =
+                    Zip.entries zip
+                        |> List.filter isMapPNG
+                        |> List.head
             in
-            ( model, Cmd.none )
+            case mapJSONMaybe of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just mapJSON ->
+                    case mapPNGMaybe of
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                        Just mapPNG ->
+                            case Zip.Entry.toString mapJSON of
+                                Result.Err mapJSONErr ->
+                                    let
+                                        _ =
+                                            Debug.log "failed convert mapJSON entry to string" mapJSONErr
+                                    in
+                                    ( model, Cmd.none )
+
+                                Result.Ok jsonString ->
+                                    case Zip.Entry.toBytes mapPNG of
+                                        Result.Err mapPNGErr ->
+                                            let
+                                                _ =
+                                                    Debug.log "failed convert png entry to bytes" mapPNGErr
+                                            in
+                                            ( model, Cmd.none )
+
+                                        Result.Ok pngBytes ->
+                                            let
+                                                imageBase64 =
+                                                    Base64Encode.encode (Base64Encode.bytes pngBytes)
+                                            in
+                                            case model.gameSetupStatus of
+                                                SetupComplete sprites ->
+                                                    ( { model | gameSetupStatus = MapDataLoaded { json = jsonString, image = imageBase64, png = pngBytes, sprites = sprites } }, loadImageURL imageBase64 )
+
+                                                _ ->
+                                                    let
+                                                        _ =
+                                                            Debug.log "order of oerations failure, can't load things if we don't have sprites" False
+                                                    in
+                                                    ( model, Cmd.none )
+
+        ImageLoadedFromJavaScript image ->
+            case Canvas.Texture.fromDomImage image of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just texture ->
+                    let
+                        { width, height } =
+                            Canvas.Texture.dimensions texture
+
+                        sprite =
+                            Canvas.Texture.sprite
+                                { x = 0
+                                , y = 0
+                                , width = width
+                                , height = height
+                                }
+                                texture
+                    in
+                    case model.gameSetupStatus of
+                        MapDataLoaded mapData ->
+                            let
+                                jsonDoc =
+                                    case Decode.decodeString jsonDecoder mapData.json of
+                                        Result.Err err ->
+                                            let
+                                                _ =
+                                                    Debug.log "failed to decode json" err
+                                            in
+                                            { imageOffsetX = 0.0
+                                            , imageOffsetY = 0.0
+                                            , canvasScale = 1.0
+                                            , tiles = [ [] ]
+                                            }
+
+                                        Result.Ok parsedJSONDoc ->
+                                            let
+                                                _ =
+                                                    Debug.log "parsed json successfully" parsedJSONDoc
+                                            in
+                                            parsedJSONDoc
+                            in
+                            ( { model
+                                | gameSetupStatus =
+                                    LevelLoaded
+                                        { sprites = mapData.sprites
+                                        , mapImage = sprite
+                                        , offsetX = jsonDoc.imageOffsetX
+                                        , offsetY = jsonDoc.imageOffsetY
+                                        , tiles = listToWorld jsonDoc.tiles
+                                        , canvasScale = jsonDoc.canvasScale
+                                        }
+                              }
+                            , getCanvasBoundingRect ()
+                            )
+
+                        _ ->
+                            ( model, Cmd.none )
+
+        CanvasBoundingRectLoaded boundingRectValue ->
+            let
+                boundingRect =
+                    getCanvasBoundingRectElseDefault boundingRectValue
+            in
+            ( { model
+                | canvasBoundingRect =
+                    { x = boundingRect.x
+                    , y = boundingRect.y
+                    , width = boundingRect.width
+                    , height = boundingRect.height
+                    }
+              }
+            , Cmd.none
+            )
 
 
 
 ---- Update bottom ----
+
+
+jsonDecoder : Decode.Decoder JSONDecodedDocument
+jsonDecoder =
+    Decode.map4 JSONDecodedDocument
+        (Decode.field "imageOffsetX" Decode.float)
+        (Decode.field "imageOffsetY" Decode.float)
+        (Decode.field "canvasScale" Decode.float)
+        (Decode.field "tiles" (Decode.list (Decode.list Decode.string)))
+
+
+type alias JSONDecodedDocument =
+    { imageOffsetX : Float
+    , imageOffsetY : Float
+    , canvasScale : Float
+    , tiles : List (List String)
+    }
 
 
 debugTileRowToString : Array TileType -> String
@@ -660,10 +790,77 @@ updateCharacterFrameTime characterFrameTime characterFrame =
         ( characterFrameTime, characterFrame )
 
 
+listToWorld : List (List String) -> Vector29.Vector29 (Vector31.Vector31 TileType)
+listToWorld list =
+    case Vector29.fromList list of
+        Nothing ->
+            defaultWorld
+
+        Just ( leftOvers, vector30 ) ->
+            if List.length leftOvers > 0 then
+                defaultWorld
+
+            else
+                Vector29.map
+                    (\row ->
+                        case Vector31.fromList row of
+                            Nothing ->
+                                Vector31.repeat NotWalkable
+
+                            Just ( leftOverCols, vector31 ) ->
+                                if List.length leftOverCols > 0 then
+                                    Vector31.repeat NotWalkable
+
+                                else
+                                    Vector31.map
+                                        (\tileTypeString ->
+                                            case tileTypeString of
+                                                "Walkable" ->
+                                                    Walkable
+
+                                                _ ->
+                                                    NotWalkable
+                                        )
+                                        vector31
+                    )
+                    vector30
+
+
+getCanvasBoundingRectElseDefault : Encode.Value -> CanvasBoundingRect
+getCanvasBoundingRectElseDefault boundingRectValue =
+    Decode.decodeValue
+        decodeBoundingRect
+        boundingRectValue
+        |> Result.withDefault
+            { x = 0
+            , y = 0
+            , width = 0
+            , height = 0
+            }
+
+
+type alias CanvasBoundingRect =
+    { x : Float
+    , y : Float
+    , width : Float
+    , height : Float
+    }
+
+
+decodeBoundingRect : Decode.Decoder CanvasBoundingRect
+decodeBoundingRect =
+    Decode.map4 CanvasBoundingRect
+        (Decode.field "x" Decode.float)
+        (Decode.field "y" Decode.float)
+        (Decode.field "width" Decode.float)
+        (Decode.field "height" Decode.float)
+
+
 view : Model -> Html Msg
 view model =
     div [ class "flex flex-row" ]
-        [ case model.gameSetupStatus of
+        [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
+        , case model.gameSetupStatus of
             SettingUp ->
                 Canvas.toHtmlWith
                     { width = gameWidth
@@ -690,7 +887,33 @@ view model =
                         "Setup failed."
                     ]
 
-            SetupComplete sprites ->
+            SetupComplete _ ->
+                Canvas.toHtmlWith
+                    { width = gameWidth
+                    , height = gameHeight
+                    , textures = []
+                    }
+                    []
+                    [ Canvas.text
+                        [ font { size = 48, family = "sans-serif" }, align Center ]
+                        ( 50, 50 )
+                        "Sprites loaded, waiting for level..."
+                    ]
+
+            MapDataLoaded _ ->
+                Canvas.toHtmlWith
+                    { width = gameWidth
+                    , height = gameHeight
+                    , textures = []
+                    }
+                    []
+                    [ Canvas.text
+                        [ font { size = 48, family = "sans-serif" }, align Center ]
+                        ( 50, 50 )
+                        "Sprites and Map JSON loaded, waiting on level image..."
+                    ]
+
+            LevelLoaded { sprites, mapImage, offsetX, offsetY, tiles, canvasScale } ->
                 Canvas.toHtmlWith
                     { width = gameWidth
                     , height = gameHeight
@@ -702,13 +925,13 @@ view model =
                         [ fill (Color.rgb 0.85 0.92 1) ]
                         [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
                      ]
-                        ++ [ Canvas.texture
-                                [ Canvas.Settings.Advanced.imageSmoothing False ]
-                                ( model.cameraX, model.cameraY )
-                                sprites.towerBase
-                           ]
+                        -- ++ [ Canvas.texture
+                        --         [ Canvas.Settings.Advanced.imageSmoothing False ]
+                        --         ( model.cameraX, model.cameraY )
+                        --         sprites.towerBase
+                        --    ]
                         ++ getCharacterFrame model sprites
-                        ++ drawWorld model
+                        ++ drawWorld tiles model.cameraX model.cameraY
                     )
         ]
 
@@ -861,23 +1084,27 @@ getCursorDirectionToString { leftPressed, rightPressed, upPressed, downPressed }
         "None"
 
 
-drawWorld : Model -> List Canvas.Renderable
-drawWorld model =
+drawWorld : World -> Float -> Float -> List Canvas.Renderable
+drawWorld world cameraX cameraY =
     [ Canvas.group
-        [ Canvas.Settings.Advanced.alpha 0.5, Canvas.Settings.Advanced.transform [ Canvas.Settings.Advanced.translate (-8 + model.cameraX) (-11 + model.cameraY) ] ]
-        (Array.indexedMap
+        [ Canvas.Settings.Advanced.alpha 0.5
+        , Canvas.Settings.Advanced.transform
+            [ Canvas.Settings.Advanced.translate (-8 + cameraX) (-11 + cameraY)
+            ]
+        ]
+        (Vector29.indexedMap
             (\rowIndex row ->
-                Array.indexedMap
+                Vector31.indexedMap
                     (\colIndex cell ->
                         drawCell (Row rowIndex) (Col colIndex) cell
                     )
                     row
-                    |> Array.toList
+                    |> Vector31.toList
                     |> List.concatMap
                         (\cell -> cell)
             )
-            model.world
-            |> Array.toList
+            world
+            |> Vector29.toList
             |> List.concatMap
                 (\cell -> cell)
         )
@@ -886,15 +1113,22 @@ drawWorld model =
 
 drawCell : Row -> Col -> TileType -> List Canvas.Renderable
 drawCell (Row row) (Col col) tileType =
+    let
+        rowInt =
+            Vector29.indexToInt row
+
+        colInt =
+            Vector31.indexToInt col
+    in
     [ shapes
         [ if tileType == Walkable then
-            fill Color.green
+            CanvasSettings.fill Color.green
 
           else
-            fill Color.red
+            CanvasSettings.fill Color.red
         ]
-        [ rect ( (toFloat col + 1) * 16, (toFloat row + 1) * 16 ) 16 16 ]
-    , shapes [ stroke Color.lightGreen ] [ rect ( (toFloat col + 1) * 16, (toFloat row + 1) * 16 ) 16 16 ]
+        [ rect ( Basics.toFloat colInt * 16, Basics.toFloat rowInt * 16 ) 16 16 ]
+    , shapes [ CanvasSettings.stroke Color.lightGreen ] [ rect ( Basics.toFloat colInt * 16, Basics.toFloat rowInt * 16 ) 16 16 ]
     ]
 
 
@@ -912,6 +1146,8 @@ subscriptions model =
             , onAnimationFrameDelta Frame
             , onKeyDown keyDecoderPressed
             , onKeyUp keyDecoderReleased
+            , onImageFromJavaScript ImageLoadedFromJavaScript
+            , onCanvasBoundingRect CanvasBoundingRectLoaded
             ]
 
     else

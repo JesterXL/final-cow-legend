@@ -11,9 +11,52 @@
   <script src="elm-canvas.js"></script>
   <script src="elm.js"></script>
   <script>
+    
+    const loadImage = src =>
+        new Promise((resolve, reject) => {
+          try {
+            const image = new Image()
+            image.crossOrigin = "Anonymous"
+            image.onload = () => resolve(image)
+            image.onerror = (err) => reject(err)
+            // console.log("image.src:", src)
+            image.src = src
+          } catch(imageError) {
+            console.log("imageError:", imageError)
+            reject(imageError)
+          }
+        }
+    )
+
+    const getImageURLPrefixMaybe = url => {
+      if(url.indexOf('data:image/png') < 0) {
+        return `data:image/png;charset=utf-8;base64,${url}`
+      } else {
+        return url
+      }
+    }
+
     var app = Elm.Main.init({ 
       node: document.querySelector('main')
     })
+
+    app.ports.loadImageURL.subscribe( imageURL =>
+      loadImage(getImageURLPrefixMaybe(imageURL))
+      .then(
+        image =>
+          app.ports.onImageFromJavaScript.send(image)
+      )
+      .catch( err => {
+        console.log("image load failed:", err)
+      })
+    )
+
+    app.ports.getCanvasBoundingRect.subscribe( () => {
+      app.ports.onCanvasBoundingRect.send(
+        document.getElementsByTagName('elm-canvas')[0].getBoundingClientRect()
+      )
+    })
+
     // you can use ports and stuff here
   </script>
 </body>
