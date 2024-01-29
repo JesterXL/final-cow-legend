@@ -131,8 +131,8 @@ initialModel seed =
     , cameraY = 0
     , characterX = 72
     , characterY = 64
-    , characterRow = 4
-    , characterCol = 4
+    , characterRow = 0
+    , characterCol = 0
     , characterFacingDirection = South
     , characterFrameTime = 0
     , characterFrame = 0
@@ -489,17 +489,17 @@ update msg model =
                 WPressed ->
                     let
                         canMoveNorth =
-                            case model.characterRow - 1 |> Vector29.intToIndex of
+                            case model.characterRow - 1 |> Vector31.intToIndex of
                                 Nothing ->
                                     False
 
                                 Just index29 ->
-                                    case model.characterCol |> Vector31.intToIndex of
+                                    case model.characterCol |> Vector29.intToIndex of
                                         Nothing ->
                                             False
 
                                         Just index31 ->
-                                            getCell (Row index29) (Col index31) model.world == Walkable
+                                            getCell (Row index31) (Col index29) model.world == Walkable
 
                         _ =
                             Debug.log "canMoveNorth" canMoveNorth
@@ -522,17 +522,20 @@ update msg model =
                 SPressed ->
                     let
                         canMoveSouth =
-                            case model.characterRow + 1 |> Vector29.intToIndex of
+                            case model.characterRow + 1 |> Vector31.intToIndex of
                                 Nothing ->
                                     False
 
                                 Just index29 ->
-                                    case model.characterCol |> Vector31.intToIndex of
+                                    case model.characterCol |> Vector29.intToIndex of
                                         Nothing ->
                                             False
 
                                         Just index31 ->
-                                            getCell (Row index29) (Col index31) model.world == Walkable
+                                            getCell (Row index31) (Col index29) model.world == Walkable
+
+                        _ =
+                            Debug.log "character row, col" ( model.characterRow, model.characterCol )
 
                         _ =
                             Debug.log "canMoveSouth" canMoveSouth
