@@ -131,8 +131,8 @@ initialModel seed =
     , cameraY = 0
     , characterX = 0
     , characterY = 0
-    , characterRow = 0
-    , characterCol = 0
+    , characterRow = 1
+    , characterCol = 1
     , characterFacingDirection = South
     , characterFrameTime = 0
     , characterFrame = 0
@@ -170,10 +170,10 @@ keyDecoderPressed =
 
 toDirectionPressed : String -> Msg
 toDirectionPressed string =
-    let
-        _ =
-            Debug.log "key pressed" string
-    in
+    -- let
+    --     _ =
+    --         Debug.log "key pressed" string
+    -- in
     case string of
         "ArrowLeft" ->
             MoveCursor LeftPressed
@@ -804,10 +804,18 @@ listToWorld : List (List String) -> Vector29.Vector29 (Vector31.Vector31 TileTyp
 listToWorld list =
     case Vector29.fromList list of
         Nothing ->
+            let
+                _ =
+                    Debug.log "failed 1" "using default"
+            in
             defaultWorld
 
         Just ( leftOvers, vector30 ) ->
             if List.length leftOvers > 0 then
+                let
+                    _ =
+                        Debug.log "failed 2" "using default"
+                in
                 defaultWorld
 
             else
@@ -935,11 +943,11 @@ view model =
                         [ fill (Color.rgb 0.85 0.92 1) ]
                         [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
                      ]
-                        -- ++ [ Canvas.texture
-                        --         [ Canvas.Settings.Advanced.imageSmoothing False ]
-                        --         ( model.cameraX, model.cameraY )
-                        --         sprites.towerBase
-                        --    ]
+                        ++ [ Canvas.texture
+                                [ Canvas.Settings.Advanced.imageSmoothing False ]
+                                ( model.cameraX - offsetX, model.cameraY - offsetY )
+                                mapImage
+                           ]
                         ++ drawWorld tiles model.cameraX model.cameraY
                         ++ getCharacterFrame model sprites
                     )
