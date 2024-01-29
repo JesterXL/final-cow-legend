@@ -983,9 +983,8 @@ decodeBoundingRect =
 
 view : Model -> Html Msg
 view model =
-    div [ class "flex flex-row" ]
-        [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
-        , case model.gameSetupStatus of
+    div [ class "flex flex-row overflow-hidden" ]
+        [ case model.gameSetupStatus of
             SettingUp ->
                 Canvas.toHtmlWith
                     { width = gameWidth
@@ -1058,6 +1057,13 @@ view model =
                         ++ drawWorld model.world model.cameraX model.cameraY
                         ++ getCharacterFrame model sprites
                     )
+        , div [ class "flex flex-col" ]
+            [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
+            , div [] [ text ("Character X: " ++ (model.characterX |> String.fromFloat)) ]
+            , div [] [ text ("Character Y: " ++ (model.characterY |> String.fromFloat)) ]
+            , div [] [ text ("Camera X: " ++ (model.cameraX |> String.fromFloat)) ]
+            , div [] [ text ("Camera Y: " ++ (model.cameraY |> String.fromFloat)) ]
+            ]
         ]
 
 
