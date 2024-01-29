@@ -129,8 +129,8 @@ initialModel seed =
     , downPressed = False
     , cameraX = 0
     , cameraY = 0
-    , characterX = 72
-    , characterY = 64
+    , characterX = 0
+    , characterY = 0
     , characterRow = 0
     , characterCol = 0
     , characterFacingDirection = South
@@ -532,10 +532,17 @@ update msg model =
                                             False
 
                                         Just index31 ->
-                                            getCell (Row index31) (Col index29) model.world == Walkable
+                                            let
+                                                datCell =
+                                                    getCell (Row index31) (Col index29) model.world
+
+                                                _ =
+                                                    Debug.log "datCell" datCell
+                                            in
+                                            datCell == Walkable
 
                         _ =
-                            Debug.log "character row, col" ( model.characterRow, model.characterCol )
+                            Debug.log "character row, col" ( model.characterRow + 1, model.characterCol )
 
                         _ =
                             Debug.log "canMoveSouth" canMoveSouth
@@ -775,8 +782,8 @@ updateCamera model timePassed =
 
 updateCharacterXAndY : Model -> Float -> Float -> Float -> Canvas.Texture.Texture -> ( Float, Float )
 updateCharacterXAndY model timePassed cameraX cameraY characterTexture =
-    ( toFloat model.characterCol * 16 + cameraX + (Canvas.Texture.dimensions characterTexture).width / 2
-    , toFloat model.characterRow * 16 + cameraY + (Canvas.Texture.dimensions characterTexture).height / 6
+    ( toFloat model.characterCol * 16 + cameraX + (Canvas.Texture.dimensions characterTexture).width / 2 - 8
+    , toFloat model.characterRow * 16 + cameraY + (Canvas.Texture.dimensions characterTexture).height / 6 - 8
     )
 
 
@@ -933,8 +940,8 @@ view model =
                         --         ( model.cameraX, model.cameraY )
                         --         sprites.towerBase
                         --    ]
-                        ++ getCharacterFrame model sprites
                         ++ drawWorld tiles model.cameraX model.cameraY
+                        ++ getCharacterFrame model sprites
                     )
         ]
 
@@ -1092,7 +1099,8 @@ drawWorld world cameraX cameraY =
     [ Canvas.group
         [ Canvas.Settings.Advanced.alpha 0.5
         , Canvas.Settings.Advanced.transform
-            [ Canvas.Settings.Advanced.translate (-8 + cameraX) (-11 + cameraY)
+            [ -- Canvas.Settings.Advanced.translate (-8 + cameraX) (-11 + cameraY)
+              Canvas.Settings.Advanced.translate cameraX cameraY
             ]
         ]
         (Vector29.indexedMap
