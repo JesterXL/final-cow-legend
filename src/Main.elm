@@ -87,7 +87,6 @@ type GameSetupStatus
         , mapImage : Texture
         , offsetX : Float
         , offsetY : Float
-        , tiles : World
         , canvasScale : Float
         }
 
@@ -522,19 +521,19 @@ update msg model =
                 SPressed ->
                     let
                         canMoveSouth =
-                            case model.characterRow + 1 |> Vector31.intToIndex of
+                            case model.characterRow + 1 |> Vector29.intToIndex of
                                 Nothing ->
                                     False
 
                                 Just index29 ->
-                                    case model.characterCol |> Vector29.intToIndex of
+                                    case model.characterCol |> Vector31.intToIndex of
                                         Nothing ->
                                             False
 
                                         Just index31 ->
                                             let
                                                 datCell =
-                                                    getCell (Row index31) (Col index29) model.world
+                                                    getCell (Row index29) (Col index31) model.world
 
                                                 _ =
                                                     Debug.log "datCell" datCell
@@ -546,6 +545,9 @@ update msg model =
 
                         _ =
                             Debug.log "canMoveSouth" canMoveSouth
+
+                        _ =
+                            Debug.log "world" (worldToString model.world)
                     in
                     if canMoveSouth == True then
                         ( { model | characterRow = model.characterRow + 1, characterFacingDirection = South }, Cmd.none )
@@ -685,19 +687,28 @@ update msg model =
                                             in
                                             parsedJSONDoc
                             in
-                            ( { model
-                                | gameSetupStatus =
-                                    LevelLoaded
-                                        { sprites = mapData.sprites
-                                        , mapImage = sprite
-                                        , offsetX = jsonDoc.imageOffsetX
-                                        , offsetY = jsonDoc.imageOffsetY
-                                        , tiles = listToWorld jsonDoc.tiles
-                                        , canvasScale = jsonDoc.canvasScale
-                                        }
-                              }
-                            , getCanvasBoundingRect ()
-                            )
+                            case listToWorld jsonDoc.tiles of
+                                Err reason ->
+                                    let
+                                        _ =
+                                            Debug.log "listToWorld failed" reason
+                                    in
+                                    ( model, Cmd.none )
+
+                                Ok parsedWorld ->
+                                    ( { model
+                                        | gameSetupStatus =
+                                            LevelLoaded
+                                                { sprites = mapData.sprites
+                                                , mapImage = sprite
+                                                , offsetX = jsonDoc.imageOffsetX
+                                                , offsetY = jsonDoc.imageOffsetY
+                                                , canvasScale = jsonDoc.canvasScale
+                                                }
+                                        , world = parsedWorld
+                                      }
+                                    , getCanvasBoundingRect ()
+                                    )
 
                         _ ->
                             ( model, Cmd.none )
@@ -721,6 +732,49 @@ update msg model =
 
 
 ---- Update bottom ----
+
+
+worldToString : World -> String
+worldToString world =
+    world
+        |> Vector29.toList
+        |> List.map
+            (\vector29 ->
+                vector29
+                    |> Vector31.toList
+                    |> List.map
+                        (\tile ->
+                            if tile == Walkable then
+                                0
+
+                            else
+                                1
+                        )
+            )
+        |> List.foldl
+            (\colList acc ->
+                (colList
+                    |> List.foldl
+                        (\tile innerAcc ->
+                            innerAcc ++ String.fromInt tile ++ ", "
+                        )
+                        "["
+                )
+                    ++ "],"
+                    ++ "\n"
+                    ++ acc
+            )
+            ""
+
+
+rowColTileToString : Row -> Col -> String -> String
+rowColTileToString (Row row) (Col col) tileTypeString =
+    "row: "
+        ++ String.fromInt (Vector29.indexToInt row)
+        ++ "-"
+        ++ String.fromInt (Vector31.indexToInt col)
+        ++ ":"
+        ++ tileTypeString
 
 
 jsonDecoder : Decode.Decoder JSONDecodedDocument
@@ -800,38 +854,48 @@ updateCharacterFrameTime characterFrameTime characterFrame =
         ( characterFrameTime, characterFrame )
 
 
-listToWorld : List (List String) -> Vector29.Vector29 (Vector31.Vector31 TileType)
+listToWorld : List (List String) -> Result String World
 listToWorld list =
     case Vector29.fromList list of
         Nothing ->
-            let
-                _ =
-                    Debug.log "failed 1" "using default"
-            in
-            defaultWorld
+            Err "1. Vector29.fromList list failed."
 
-        Just ( leftOvers, vector30 ) ->
+        Just ( leftOvers, vector31 ) ->
             if List.length leftOvers > 0 then
-                let
-                    _ =
-                        Debug.log "failed 2" "using default"
-                in
-                defaultWorld
+                Err "2. List.length leftOvers > 0"
 
-            else
-                Vector29.map
-                    (\row ->
+            else if
+                Vector29.foldl
+                    (\row acc ->
                         case Vector31.fromList row of
                             Nothing ->
+                                False
+
+                            Just ( leftOverCols, _ ) ->
+                                List.length leftOverCols == 0
+                    )
+                    False
+                    vector31
+                    == True
+            then
+                Vector29.indexedMap
+                    (\rowIndex row ->
+                        case Vector31.fromList row of
+                            Nothing ->
+                                -- Err "3. Vector31.fromList row"
                                 Vector31.repeat NotWalkable
 
-                            Just ( leftOverCols, vector31 ) ->
+                            Just ( leftOverCols, currentVector31 ) ->
                                 if List.length leftOverCols > 0 then
                                     Vector31.repeat NotWalkable
 
                                 else
-                                    Vector31.map
-                                        (\tileTypeString ->
+                                    Vector31.indexedMap
+                                        (\colIndex tileTypeString ->
+                                            -- let
+                                            --     _ =
+                                            --         Debug.log "what the" (rowColTileToString (Row rowIndex) (Col colIndex) tileTypeString)
+                                            -- in
                                             case tileTypeString of
                                                 "Walkable" ->
                                                     Walkable
@@ -839,9 +903,13 @@ listToWorld list =
                                                 _ ->
                                                     NotWalkable
                                         )
-                                        vector31
+                                        currentVector31
                     )
-                    vector30
+                    vector31
+                    |> Ok
+
+            else
+                Err "Vector31 had parsing problems from JSON"
 
 
 getCanvasBoundingRectElseDefault : Encode.Value -> CanvasBoundingRect
@@ -931,7 +999,7 @@ view model =
                         "Sprites and Map JSON loaded, waiting on level image..."
                     ]
 
-            LevelLoaded { sprites, mapImage, offsetX, offsetY, tiles, canvasScale } ->
+            LevelLoaded { sprites, mapImage, offsetX, offsetY, canvasScale } ->
                 Canvas.toHtmlWith
                     { width = gameWidth
                     , height = gameHeight
@@ -948,7 +1016,7 @@ view model =
                                 ( model.cameraX - offsetX, model.cameraY - offsetY )
                                 mapImage
                            ]
-                        ++ drawWorld tiles model.cameraX model.cameraY
+                        ++ drawWorld model.world model.cameraX model.cameraY
                         ++ getCharacterFrame model sprites
                     )
         ]
