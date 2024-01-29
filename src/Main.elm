@@ -66,7 +66,11 @@ type alias Model =
     , characterFrameTime : Int
     , characterFrame : Int
     , world : World
+    , offsetX : Float
+    , offsetY : Float
+    , canvasScale : Float
     , canvasBoundingRect : CanvasBoundingRect
+    , npcs : List NPC
     }
 
 
@@ -81,13 +85,15 @@ type GameSetupStatus
     = SettingUp
     | SetupComplete Sprites
     | SetupFailed
-    | MapDataLoaded { json : String, image : String, png : Bytes, sprites : Sprites }
+    | MapDataLoaded
+        { json : String
+        , image : String
+        , png : Bytes
+        , sprites : Sprites
+        }
     | LevelLoaded
         { sprites : Sprites
         , mapImage : Texture
-        , offsetX : Float
-        , offsetY : Float
-        , canvasScale : Float
         }
 
 
@@ -125,6 +131,15 @@ defaultWorld =
         |> Vector29.repeat
 
 
+type alias NPC =
+    { sprite : Texture
+    , row : Vector29.Index
+    , col : Vector31.Index
+    , x : Float
+    , y : Float
+    }
+
+
 initialModel : Random.Seed -> Model
 initialModel seed =
     { initialSeed = seed
@@ -146,7 +161,11 @@ initialModel seed =
     , characterFrameTime = 0
     , characterFrame = 0
     , world = defaultWorld
+    , offsetX = 0
+    , offsetY = 0
+    , canvasScale = 0
     , canvasBoundingRect = { x = 0, y = 0, width = 0, height = 0 }
+    , npcs = []
     }
 
 
@@ -335,6 +354,9 @@ update msg model =
 
                         -- (cameraX, cameraY) =
                         --     newCharacterX -
+                        updatedNPCs =
+                            updateNPCsXY model.npcs
+
                         updatedModel =
                             { model
                                 | time = model.time + timePassedInt
@@ -344,6 +366,7 @@ update msg model =
                                 , characterFrame = newCharacterFrame
                                 , characterX = newCharacterX
                                 , characterY = newCharacterY
+                                , npcs = updatedNPCs
                             }
                     in
                     ( updatedModel, Cmd.none )
@@ -694,11 +717,19 @@ update msg model =
                                             LevelLoaded
                                                 { sprites = mapData.sprites
                                                 , mapImage = sprite
-                                                , offsetX = jsonDoc.imageOffsetX
-                                                , offsetY = jsonDoc.imageOffsetY
-                                                , canvasScale = jsonDoc.canvasScale
                                                 }
                                         , world = parsedWorld
+                                        , offsetX = jsonDoc.imageOffsetX
+                                        , offsetY = jsonDoc.imageOffsetY
+                                        , canvasScale = jsonDoc.canvasScale
+                                        , npcs =
+                                            [ { sprite = mapData.sprites.mainCharacterSouth1
+                                              , row = Vector29.Index1
+                                              , col = Vector31.Index4
+                                              , x = 0
+                                              , y = 0
+                                              }
+                                            ]
                                       }
                                     , getCanvasBoundingRect ()
                                     )
@@ -889,6 +920,18 @@ updateCharacterXAndYNoCamera model timePassed characterTexture =
     )
 
 
+updateNPCsXY : List NPC -> List NPC
+updateNPCsXY npcs =
+    List.map
+        (\npc ->
+            { npc
+                | x = toFloat (Vector29.indexToInt npc.row) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
+                , y = toFloat (Vector31.indexToInt npc.col) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
+            }
+        )
+        npcs
+
+
 updateCharacterFrameTime : Int -> Int -> ( Int, Int )
 updateCharacterFrameTime characterFrameTime characterFrame =
     if characterFrameTime > 200 then
@@ -1046,7 +1089,7 @@ view model =
                         "Sprites and Map JSON loaded, waiting on level image..."
                     ]
 
-            LevelLoaded { sprites, mapImage, offsetX, offsetY, canvasScale } ->
+            LevelLoaded { sprites, mapImage } ->
                 Canvas.toHtmlWith
                     { width = gameWidth
                     , height = gameHeight
@@ -1068,11 +1111,12 @@ view model =
                                 ([]
                                     ++ [ Canvas.texture
                                             [ Canvas.Settings.Advanced.imageSmoothing False ]
-                                            ( -offsetX, -offsetY )
+                                            ( -model.offsetX, -model.offsetY )
                                             mapImage
                                        ]
                                     ++ drawWorld model.world model.cameraX model.cameraY
                                     ++ getCharacterFrame model sprites
+                                    ++ drawNPCs model.npcs sprites
                                 )
                            ]
                     )
@@ -1148,6 +1192,21 @@ getCharacterFrame model sprites =
                     ( model.characterX, model.characterY )
                     sprites.mainCharacterWest2
                 ]
+
+
+drawNPCs : List NPC -> Sprites -> List Canvas.Renderable
+drawNPCs npcs sprites =
+    List.foldl
+        (\npc acc ->
+            acc
+                ++ [ Canvas.texture
+                        [ Canvas.Settings.Advanced.imageSmoothing False ]
+                        ( npc.x, npc.y )
+                        sprites.mainCharacterSouth1
+                   ]
+        )
+        []
+        npcs
 
 
 

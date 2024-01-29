@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "elm-live src/Main.elm --dir=./src --start-page=index.html -- --output=src/elm.js",
+    "start": "elm-live src/Main.elm --dir=./src --start-page=index.html --hot -- --output=src/elm.js",
     "start2": "elm-live src/Main.elm --dir=./src --start-page=index.html -- --output=src/elm.js",
     "watch:css": "tailwindcss -c tailwind.config.js -i ./src/tailwind.css -o src/tailwind.build.css --watch"
   },
