@@ -109,6 +109,16 @@ type alias World =
     Vector29.Vector29 (Vector31.Vector31 TileType)
 
 
+rowIndexFromVector : Int -> Maybe Vector29.Index
+rowIndexFromVector int =
+    Vector29.intToIndex int
+
+
+colIndexFromVector : Int -> Maybe Vector31.Index
+colIndexFromVector int =
+    Vector31.intToIndex int
+
+
 defaultWorld : World
 defaultWorld =
     Vector31.initializeFromInt (\_ -> NotWalkable)
@@ -487,24 +497,11 @@ update msg model =
 
                 WPressed ->
                     let
-                        canMoveNorth =
-                            case model.characterRow - 1 |> Vector31.intToIndex of
-                                Nothing ->
-                                    False
-
-                                Just index29 ->
-                                    case model.characterCol |> Vector29.intToIndex of
-                                        Nothing ->
-                                            False
-
-                                        Just index31 ->
-                                            getCell (Row index31) (Col index29) model.world == Walkable
-
-                        _ =
-                            Debug.log "canMoveNorth" canMoveNorth
+                        desiredRow =
+                            getCharacterDesiredRow North model.characterRow
                     in
-                    if canMoveNorth == True then
-                        ( { model | characterRow = model.characterRow - 1, characterFacingDirection = North }, Cmd.none )
+                    if canMove North model.characterRow model.characterCol model.world == True then
+                        ( { model | characterRow = desiredRow, characterFacingDirection = North }, Cmd.none )
 
                     else
                         ( { model | characterFacingDirection = North }, Cmd.none )
@@ -513,44 +510,26 @@ update msg model =
                     ( model, Cmd.none )
 
                 APressed ->
-                    ( { model | characterFacingDirection = West }, Cmd.none )
+                    let
+                        desiredCol =
+                            getCharacterDesiredCol West model.characterCol
+                    in
+                    if canMove West model.characterRow model.characterCol model.world == True then
+                        ( { model | characterCol = desiredCol, characterFacingDirection = West }, Cmd.none )
+
+                    else
+                        ( { model | characterFacingDirection = West }, Cmd.none )
 
                 AReleased ->
                     ( model, Cmd.none )
 
                 SPressed ->
                     let
-                        canMoveSouth =
-                            case model.characterRow + 1 |> Vector29.intToIndex of
-                                Nothing ->
-                                    False
-
-                                Just index29 ->
-                                    case model.characterCol |> Vector31.intToIndex of
-                                        Nothing ->
-                                            False
-
-                                        Just index31 ->
-                                            let
-                                                datCell =
-                                                    getCell (Row index29) (Col index31) model.world
-
-                                                _ =
-                                                    Debug.log "datCell" datCell
-                                            in
-                                            datCell == Walkable
-
-                        _ =
-                            Debug.log "character row, col" ( model.characterRow + 1, model.characterCol )
-
-                        _ =
-                            Debug.log "canMoveSouth" canMoveSouth
-
-                        _ =
-                            Debug.log "world" (worldToString model.world)
+                        desiredRow =
+                            getCharacterDesiredRow South model.characterRow
                     in
-                    if canMoveSouth == True then
-                        ( { model | characterRow = model.characterRow + 1, characterFacingDirection = South }, Cmd.none )
+                    if canMove South model.characterRow model.characterCol model.world == True then
+                        ( { model | characterRow = desiredRow, characterFacingDirection = South }, Cmd.none )
 
                     else
                         ( { model | characterFacingDirection = South }, Cmd.none )
@@ -559,7 +538,15 @@ update msg model =
                     ( model, Cmd.none )
 
                 DPressed ->
-                    ( { model | characterFacingDirection = East }, Cmd.none )
+                    let
+                        desiredCol =
+                            getCharacterDesiredCol East model.characterCol
+                    in
+                    if canMove East model.characterRow model.characterCol model.world == True then
+                        ( { model | characterCol = desiredCol, characterFacingDirection = East }, Cmd.none )
+
+                    else
+                        ( { model | characterFacingDirection = East }, Cmd.none )
 
                 DReleased ->
                     ( model, Cmd.none )
@@ -810,6 +797,54 @@ debugTileRowToString row =
                 rowStr ++ tileTypeString
             )
             ""
+
+
+canMove : FacingDirection -> Int -> Int -> World -> Bool
+canMove facingDirection characterRow characterCol world =
+    let
+        desiredRow =
+            getCharacterDesiredRow facingDirection characterRow
+
+        desiredCol =
+            getCharacterDesiredCol facingDirection characterCol
+    in
+    case desiredRow |> rowIndexFromVector of
+        Nothing ->
+            False
+
+        Just rowIndex ->
+            case desiredCol |> colIndexFromVector of
+                Nothing ->
+                    False
+
+                Just colIndex ->
+                    getCell (Row rowIndex) (Col colIndex) world == Walkable
+
+
+getCharacterDesiredRow : FacingDirection -> Int -> Int
+getCharacterDesiredRow facingDirection characterRow =
+    case facingDirection of
+        North ->
+            characterRow - 1
+
+        South ->
+            characterRow + 1
+
+        _ ->
+            characterRow
+
+
+getCharacterDesiredCol : FacingDirection -> Int -> Int
+getCharacterDesiredCol facingDirection characterCol =
+    case facingDirection of
+        East ->
+            characterCol + 1
+
+        West ->
+            characterCol - 1
+
+        _ ->
+            characterCol
 
 
 updateCamera : Model -> Float -> ( Float, Float )
