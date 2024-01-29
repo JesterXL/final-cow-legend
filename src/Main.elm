@@ -324,20 +324,22 @@ update msg model =
                         timePassedInt =
                             round timePassed
 
-                        ( cameraX, cameraY ) =
-                            updateCamera model timePassed
-
+                        -- ( cameraX, cameraY ) =
+                        --     updateCamera model timePassed
                         ( newCharacterFrameTime, newCharacterFrame ) =
                             updateCharacterFrameTime (model.characterFrameTime + timePassedInt) model.characterFrame
 
                         ( newCharacterX, newCharacterY ) =
-                            updateCharacterXAndY model timePassed cameraX cameraY sprites.mainCharacterEast1
+                            -- updateCharacterXAndY model timePassed cameraX cameraY sprites.mainCharacterEast1
+                            updateCharacterXAndYNoCamera model timePassed sprites.mainCharacterEast1
 
+                        -- (cameraX, cameraY) =
+                        --     newCharacterX -
                         updatedModel =
                             { model
                                 | time = model.time + timePassedInt
-                                , cameraX = cameraX
-                                , cameraY = cameraY
+                                , cameraX = -newCharacterX
+                                , cameraY = -newCharacterY
                                 , characterFrameTime = newCharacterFrameTime
                                 , characterFrame = newCharacterFrame
                                 , characterX = newCharacterX
@@ -880,6 +882,13 @@ updateCharacterXAndY model timePassed cameraX cameraY characterTexture =
     )
 
 
+updateCharacterXAndYNoCamera : Model -> Float -> Canvas.Texture.Texture -> ( Float, Float )
+updateCharacterXAndYNoCamera model timePassed characterTexture =
+    ( toFloat model.characterCol * 16 + (Canvas.Texture.dimensions characterTexture).width / 2 - 8
+    , toFloat model.characterRow * 16 + (Canvas.Texture.dimensions characterTexture).height / 6 - 8
+    )
+
+
 updateCharacterFrameTime : Int -> Int -> ( Int, Int )
 updateCharacterFrameTime characterFrameTime characterFrame =
     if characterFrameTime > 200 then
@@ -1049,13 +1058,23 @@ view model =
                         [ fill (Color.rgb 0.85 0.92 1) ]
                         [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
                      ]
-                        ++ [ Canvas.texture
-                                [ Canvas.Settings.Advanced.imageSmoothing False ]
-                                ( model.cameraX - offsetX, model.cameraY - offsetY )
-                                mapImage
+                        ++ [ Canvas.group
+                                [ Canvas.Settings.Advanced.transform
+                                    [ Canvas.Settings.Advanced.translate
+                                        (model.cameraX + 80)
+                                        (model.cameraY + 60)
+                                    ]
+                                ]
+                                ([]
+                                    ++ [ Canvas.texture
+                                            [ Canvas.Settings.Advanced.imageSmoothing False ]
+                                            ( -offsetX, -offsetY )
+                                            mapImage
+                                       ]
+                                    ++ drawWorld model.world model.cameraX model.cameraY
+                                    ++ getCharacterFrame model sprites
+                                )
                            ]
-                        ++ drawWorld model.world model.cameraX model.cameraY
-                        ++ getCharacterFrame model sprites
                     )
         , div [ class "flex flex-col" ]
             [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
@@ -1220,8 +1239,8 @@ drawWorld world cameraX cameraY =
     [ Canvas.group
         [ Canvas.Settings.Advanced.alpha 0.5
         , Canvas.Settings.Advanced.transform
-            [ -- Canvas.Settings.Advanced.translate (-8 + cameraX) (-11 + cameraY)
-              Canvas.Settings.Advanced.translate cameraX cameraY
+            [-- Canvas.Settings.Advanced.translate (-8 + cameraX) (-11 + cameraY)
+             --   Canvas.Settings.Advanced.translate cameraX cameraY
             ]
         ]
         (Vector29.indexedMap
