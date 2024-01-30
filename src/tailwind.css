@@ -1,9 +1,9 @@
 @font-face {
-    font-family: 'FinalFantasyAdventureGB';
-    font-weight: 600;
-    src: url('./fonts/final-fantasy-adventure-gb.ttf') format('truetype');
-    font-style: normal;
-  }
+  font-family: 'FinalFantasyAdventureGB-Pixel';
+  font-weight: 600;
+  src: url('./fonts/final-fantasy-adventure-gb-pixel.ttf') format('truetype');
+  font-style: normal;
+}
   
   
   

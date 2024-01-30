@@ -1042,99 +1042,111 @@ decodeBoundingRect =
 view : Model -> Html Msg
 view model =
     div [ class "flex flex-row overflow-hidden" ]
-        [ case model.gameSetupStatus of
-            SettingUp ->
-                Canvas.toHtmlWith
-                    { width = gameWidth
-                    , height = gameHeight
-                    , textures = [ Canvas.Texture.loadFromImageUrl "FFL-TowerBase.png" TextureLoaded ]
-                    }
-                    []
-                    [ Canvas.text
-                        [ font { size = 48, family = "sans-serif" }, align Center ]
-                        ( 50, 50 )
-                        "Loading textures..."
-                    ]
-
-            SetupFailed ->
-                Canvas.toHtmlWith
-                    { width = gameWidth
-                    , height = gameHeight
-                    , textures = []
-                    }
-                    []
-                    [ Canvas.text
-                        [ font { size = 48, family = "sans-serif" }, align Center ]
-                        ( 50, 50 )
-                        "Setup failed."
-                    ]
-
-            SetupComplete _ ->
-                Canvas.toHtmlWith
-                    { width = gameWidth
-                    , height = gameHeight
-                    , textures = []
-                    }
-                    []
-                    [ Canvas.text
-                        [ font { size = 48, family = "sans-serif" }, align Center ]
-                        ( 50, 50 )
-                        "Sprites loaded, waiting for level..."
-                    ]
-
-            MapDataLoaded _ ->
-                Canvas.toHtmlWith
-                    { width = gameWidth
-                    , height = gameHeight
-                    , textures = []
-                    }
-                    []
-                    [ Canvas.text
-                        [ font { size = 48, family = "sans-serif" }, align Center ]
-                        ( 50, 50 )
-                        "Sprites and Map JSON loaded, waiting on level image..."
-                    ]
-
-            LevelLoaded { sprites, mapImage } ->
-                Canvas.toHtmlWith
-                    { width = gameWidth
-                    , height = gameHeight
-                    , textures = []
-                    }
-                    -- [ class "block scale-[2] pixel-art" ]
-                    [ class "block pixel-art" ]
-                    ([ shapes
-                        [ fill (Color.rgb 0.85 0.92 1) ]
-                        [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
-                     ]
-                        ++ [ Canvas.group
-                                [ Canvas.Settings.Advanced.transform
-                                    [ Canvas.Settings.Advanced.translate
-                                        (model.cameraX + 80)
-                                        (model.cameraY + 60)
-                                    ]
-                                ]
-                                ([]
-                                    ++ [ Canvas.texture
-                                            [ Canvas.Settings.Advanced.imageSmoothing False ]
-                                            ( -model.offsetX, -model.offsetY )
-                                            mapImage
-                                       ]
-                                    ++ drawWorld model.world model.cameraX model.cameraY
-                                    ++ getCharacterFrame model sprites
-                                    ++ drawNPCs model.npcs sprites
-                                )
-                           ]
-                        ++ drawSpeaking "Gen-Bu has hidden\n the key to the door\n in the Statue of Hero."
-                    )
-        , div [ class "flex flex-col" ]
-            [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
-            , div [] [ text ("Character X: " ++ (model.characterX |> String.fromFloat)) ]
-            , div [] [ text ("Character Y: " ++ (model.characterY |> String.fromFloat)) ]
-            , div [] [ text ("Camera X: " ++ (model.cameraX |> String.fromFloat)) ]
-            , div [] [ text ("Camera Y: " ++ (model.cameraY |> String.fromFloat)) ]
-            ]
+        [ Canvas.toHtmlWith
+            { width = gameWidth
+            , height = gameHeight
+            , textures = []
+            }
+            [ class "block pixel-art" ]
+            ([ shapes
+                [ fill (Color.rgb 0.85 0.92 1) ]
+                [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+             ]
+                ++ drawSpeaking "The King Sword is\nevil and will stop\nanyone who visits\nhis castle."
+            )
         ]
+
+
+
+-- [ case model.gameSetupStatus of
+--     SettingUp ->
+--         Canvas.toHtmlWith
+--             { width = gameWidth
+--             , height = gameHeight
+--             , textures = [ Canvas.Texture.loadFromImageUrl "FFL-TowerBase.png" TextureLoaded ]
+--             }
+--             []
+--             [ Canvas.text
+--                 [ font { size = 48, family = "sans-serif" }, align Center ]
+--                 ( 50, 50 )
+--                 "Loading textures..."
+--             ]
+--     SetupFailed ->
+--         Canvas.toHtmlWith
+--             { width = gameWidth
+--             , height = gameHeight
+--             , textures = []
+--             }
+--             []
+--             [ Canvas.text
+--                 [ font { size = 48, family = "sans-serif" }, align Center ]
+--                 ( 50, 50 )
+--                 "Setup failed."
+--             ]
+--     SetupComplete _ ->
+--         Canvas.toHtmlWith
+--             { width = gameWidth
+--             , height = gameHeight
+--             , textures = []
+--             }
+--             []
+--             [ Canvas.text
+--                 [ font { size = 48, family = "sans-serif" }, align Center ]
+--                 ( 50, 50 )
+--                 "Sprites loaded, waiting for level..."
+--             ]
+--     MapDataLoaded _ ->
+--         Canvas.toHtmlWith
+--             { width = gameWidth
+--             , height = gameHeight
+--             , textures = []
+--             }
+--             []
+--             [ Canvas.text
+--                 [ font { size = 48, family = "sans-serif" }, align Center ]
+--                 ( 50, 50 )
+--                 "Sprites and Map JSON loaded, waiting on level image..."
+--             ]
+--     LevelLoaded { sprites, mapImage } ->
+--         Canvas.toHtmlWith
+--             { width = gameWidth
+--             , height = gameHeight
+--             , textures = []
+--             }
+--             -- [ class "block scale-[2] pixel-art" ]
+--             [ class "block pixel-art" ]
+--             ([ shapes
+--                 [ fill (Color.rgb 0.85 0.92 1) ]
+--                 [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+--              ]
+--                 ++ [ Canvas.group
+--                         [ Canvas.Settings.Advanced.transform
+--                             [ Canvas.Settings.Advanced.translate
+--                                 (model.cameraX + 80)
+--                                 (model.cameraY + 60)
+--                             ]
+--                         ]
+--                         ([]
+--                             ++ [ Canvas.texture
+--                                     [ Canvas.Settings.Advanced.imageSmoothing False ]
+--                                     ( -model.offsetX, -model.offsetY )
+--                                     mapImage
+--                                ]
+--                             ++ drawWorld model.world model.cameraX model.cameraY
+--                             ++ getCharacterFrame model sprites
+--                             ++ drawNPCs model.npcs sprites
+--                         )
+--                    ]
+--                 ++ drawSpeaking "Gen-Bu has hidden\n the key to the door\n in the Statue of Hero."
+--             )
+-- , div [ class "flex flex-col" ]
+--     [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
+--     , div [] [ text ("Character X: " ++ (model.characterX |> String.fromFloat)) ]
+--     , div [] [ text ("Character Y: " ++ (model.characterY |> String.fromFloat)) ]
+--     , div [] [ text ("Camera X: " ++ (model.cameraX |> String.fromFloat)) ]
+--     , div [] [ text ("Camera Y: " ++ (model.cameraY |> String.fromFloat)) ]
+--     ]
+-- ]
 
 
 getCharacterFrame : Model -> Sprites -> List Canvas.Renderable
@@ -1218,6 +1230,22 @@ drawNPCs npcs sprites =
 
 drawSpeaking : String -> List Canvas.Renderable
 drawSpeaking speech =
+    let
+        fontSize =
+            8
+
+        lines =
+            String.split "\n" speech
+                |> List.indexedMap
+                    (\index str ->
+                        Canvas.text
+                            [ font { size = fontSize, family = "FinalFantasyAdventureGB-Pixel" }
+                            , align Left
+                            ]
+                            ( 9, fontSize * (toFloat index + 1) + (fontSize * toFloat index) + 6 )
+                            (String.trim str)
+                    )
+    in
     [ shapes
         [ fill (Color.rgb 1 1 1) ]
         [ rect
@@ -1226,13 +1254,8 @@ drawSpeaking speech =
             gameWidthFloat
             gameHeightFloat
         ]
-    , Canvas.text
-        [ font { size = 9, family = "FinalFantasyAdventureGB" }
-        , align Start
-        ]
-        ( 0, 0 )
-        speech
     ]
+        ++ lines
 
 
 
