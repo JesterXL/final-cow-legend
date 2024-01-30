@@ -11,7 +11,7 @@ import Bytes exposing (Bytes)
 import Canvas exposing (Point, rect, shapes)
 import Canvas.Settings as CanvasSettings exposing (fill, stroke)
 import Canvas.Settings.Advanced
-import Canvas.Settings.Text exposing (TextAlign(..), align, font)
+import Canvas.Settings.Text exposing (TextAlign(..), align, font, maxWidth)
 import Canvas.Texture exposing (Texture, sprite)
 import Color
 import File exposing (File)
@@ -50,6 +50,7 @@ type alias Model =
     { initialSeed : Random.Seed
     , currentSeed : Random.Seed
     , paused : Bool
+    , talking : Bool
     , time : Int
     , gameSetupStatus : GameSetupStatus
     , leftPressed : Bool
@@ -137,6 +138,8 @@ type alias NPC =
     , col : Vector31.Index
     , x : Float
     , y : Float
+    , responses : List String
+    , responseIndex : Int
     }
 
 
@@ -145,6 +148,7 @@ initialModel seed =
     { initialSeed = seed
     , currentSeed = seed
     , paused = False
+    , talking = False
     , time = 0
     , gameSetupStatus = SettingUp
     , leftPressed = False
@@ -728,6 +732,8 @@ update msg model =
                                               , col = Vector31.Index4
                                               , x = 0
                                               , y = 0
+                                              , responses = [ "Gen-Bu has hidden the key to the door in the Statue of Hero." ]
+                                              , responseIndex = 0
                                               }
                                             ]
                                       }
@@ -1119,6 +1125,7 @@ view model =
                                     ++ drawNPCs model.npcs sprites
                                 )
                            ]
+                        ++ drawSpeaking "Gen-Bu has hidden\n the key to the door\n in the Statue of Hero."
                     )
         , div [ class "flex flex-col" ]
             [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
@@ -1207,6 +1214,25 @@ drawNPCs npcs sprites =
         )
         []
         npcs
+
+
+drawSpeaking : String -> List Canvas.Renderable
+drawSpeaking speech =
+    [ shapes
+        [ fill (Color.rgb 1 1 1) ]
+        [ rect
+            -- ( 0, gameHeightFloat - 64 )
+            ( 0, 0 )
+            gameWidthFloat
+            gameHeightFloat
+        ]
+    , Canvas.text
+        [ font { size = 9, family = "FinalFantasyAdventureGB" }
+        , align Start
+        ]
+        ( 0, 0 )
+        speech
+    ]
 
 
 
