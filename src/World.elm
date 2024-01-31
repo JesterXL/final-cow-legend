@@ -1,4 +1,4 @@
-module World exposing (TileType(..), defaultWorld, getCell)
+module World exposing (Col(..), Row(..), TileType(..), defaultWorld, getCell, setCell)
 
 import Vector29
 import Vector31
@@ -19,31 +19,78 @@ defaultWorld =
         |> Vector29.repeat
 
 
-type alias RowIndex =
-    Vector29.Index
+type Row
+    = Row0
+    | Row1
+    | Row2
 
 
-getCell : Vector29.Index -> Vector31.Index -> World -> TileType
+type Col
+    = Col0
+    | Col1
+    | Col2
+
+
+rowToIndex : Row -> Vector29.Index
+rowToIndex row =
+    case row of
+        Row0 ->
+            Vector29.Index0
+
+        Row1 ->
+            Vector29.Index1
+
+        Row2 ->
+            Vector29.Index2
+
+
+colToIndex : Col -> Vector31.Index
+colToIndex col =
+    case col of
+        Col0 ->
+            Vector31.Index0
+
+        Col1 ->
+            Vector31.Index1
+
+        Col2 ->
+            Vector31.Index2
+
+
+getCell : Row -> Col -> World -> TileType
 getCell row col world =
     let
+        rowIndex =
+            rowToIndex row
+
+        colIndex =
+            colToIndex col
+
         rowVector =
-            Vector29.get row world
+            Vector29.get rowIndex world
 
         tile =
-            Vector31.get col rowVector
+            Vector31.get colIndex rowVector
     in
     tile
 
 
+setCell : Row -> Col -> TileType -> World -> World
+setCell row col newValue world =
+    let
+        rowIndex =
+            rowToIndex row
 
--- setCell : Row -> Col -> TileType -> World -> World
--- setCell (Row row) (Col col) newValue world =
---     let
---         rowVector =
---             Vector29.get row world
---         updatedColVector =
---             Vector31.set col newValue rowVector
---         updatedRowVector =
---             Vector29.set row updatedColVector world
---     in
---     updatedRowVector
+        colIndex =
+            colToIndex col
+
+        rowVector =
+            Vector29.get rowIndex world
+
+        updatedColVector =
+            Vector31.set colIndex newValue rowVector
+
+        updatedRowVector =
+            Vector29.set rowIndex updatedColVector world
+    in
+    updatedRowVector

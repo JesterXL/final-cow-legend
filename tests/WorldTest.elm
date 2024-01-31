@@ -5,7 +5,7 @@ import Fuzz exposing (..)
 import Test exposing (..)
 import Vector29
 import Vector31
-import World exposing (TileType(..), defaultWorld, getCell)
+import World exposing (Col(..), Row(..), TileType(..), defaultWorld, getCell, setCell)
 
 
 suite : Test
@@ -46,7 +46,7 @@ suite =
                 \_ ->
                     let
                         walkable =
-                            case defaultWorld |> getCell Vector29.Index0 Vector31.Index0 of
+                            case defaultWorld |> getCell Row0 Col0 of
                                 Walkable ->
                                     True
 
@@ -54,5 +54,39 @@ suite =
                                     False
                     in
                     Expect.equal walkable True
+            , test "should be able to set a tile" <|
+                \_ ->
+                    let
+                        world =
+                            defaultWorld
+
+                        starterTile =
+                            world
+                                |> getCell Row0 Col0
+
+                        updatedTile =
+                            setCell Row0 Col0 NotWalkable world
+                                |> getCell Row0 Col0
+
+                        firstTileRight =
+                            case starterTile of
+                                Walkable ->
+                                    True
+
+                                NotWalkable ->
+                                    False
+
+                        secondTileCorrect =
+                            case updatedTile of
+                                Walkable ->
+                                    False
+
+                                NotWalkable ->
+                                    True
+
+                        legit =
+                            firstTileRight == True && secondTileCorrect == True
+                    in
+                    Expect.equal legit True
             ]
         ]
