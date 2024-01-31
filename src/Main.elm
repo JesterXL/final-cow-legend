@@ -8,9 +8,10 @@ import Battle exposing (Attack(..), AttackMissesDeathProtectedTargets(..), Battl
 import Browser
 import Browser.Events exposing (Visibility(..), onAnimationFrameDelta, onKeyDown, onKeyUp, onVisibilityChange)
 import Bytes exposing (Bytes)
-import Canvas exposing (Point, rect, shapes)
+import Canvas exposing (Point, lineTo, moveTo, path, rect, shapes)
 import Canvas.Settings as CanvasSettings exposing (fill, stroke)
 import Canvas.Settings.Advanced
+import Canvas.Settings.Line exposing (LineCap(..), LineJoin(..), lineCap, lineJoin, lineWidth)
 import Canvas.Settings.Text exposing (TextAlign(..), align, font, maxWidth)
 import Canvas.Texture exposing (Texture, sprite)
 import Color
@@ -50,7 +51,7 @@ type alias Model =
     { initialSeed : Random.Seed
     , currentSeed : Random.Seed
     , paused : Bool
-    , talking : Bool
+    , speaking : Bool
     , time : Int
     , gameSetupStatus : GameSetupStatus
     , leftPressed : Bool
@@ -148,7 +149,7 @@ initialModel seed =
     { initialSeed = seed
     , currentSeed = seed
     , paused = False
-    , talking = False
+    , speaking = False
     , time = 0
     , gameSetupStatus = SettingUp
     , leftPressed = False
@@ -328,6 +329,7 @@ type Msg
     | GotZip (Maybe Zip)
     | ImageLoadedFromJavaScript Decode.Value
     | CanvasBoundingRectLoaded Decode.Value
+    | Talk
 
 
 
@@ -523,7 +525,15 @@ update msg model =
                     --     _ =
                     --         Debug.log "datPath" datPath
                     -- in
-                    ( model, Cmd.none )
+                    let
+                        _ =
+                            Debug.log "npc" (getTargetNPCCharacterIsFacing model)
+                    in
+                    if model.speaking == False then
+                        ( { model | speaking = True }, Cmd.none )
+
+                    else
+                        ( { model | speaking = False }, Cmd.none )
 
                 EnterReleased ->
                     ( model, Cmd.none )
@@ -758,6 +768,9 @@ update msg model =
               }
             , Cmd.none
             )
+
+        Talk ->
+            ( { model | paused = True, speaking = True }, Cmd.none )
 
 
 
@@ -1039,114 +1052,165 @@ decodeBoundingRect =
         (Decode.field "height" Decode.float)
 
 
+getTargetNPCCharacterIsFacing : Model -> Maybe NPC
+getTargetNPCCharacterIsFacing model =
+    let
+        ( targetRow, targetCol ) =
+            getCharacterFacingTargetXY
+                model.characterRow
+                model.characterCol
+                model.characterFacingDirection
+
+        match =
+            List.filter
+                (\npcItem ->
+                    let
+                        _ =
+                            Debug.log "npc" ( Vector29.indexToInt npcItem.row, Vector31.indexToInt npcItem.col )
+                    in
+                    targetRow == Vector29.indexToInt npcItem.row && targetCol == Vector31.indexToInt npcItem.col
+                )
+                model.npcs
+                |> List.head
+
+        _ =
+            Debug.log "char: " ( model.characterRow, model.characterCol )
+
+        _ =
+            Debug.log "target: " ( targetRow, targetCol )
+    in
+    match
+
+
+getCharacterFacingTargetXY : Int -> Int -> FacingDirection -> ( Int, Int )
+getCharacterFacingTargetXY row col facingDirection =
+    case facingDirection of
+        North ->
+            ( row - 1, col )
+
+        South ->
+            ( row + 1, col )
+
+        East ->
+            ( row, col + 1 )
+
+        West ->
+            ( row, col - 1 )
+
+
 view : Model -> Html Msg
 view model =
     div [ class "flex flex-row overflow-hidden" ]
-        [ Canvas.toHtmlWith
-            { width = gameWidth
-            , height = gameHeight
-            , textures = []
-            }
-            [ class "block pixel-art" ]
-            ([ shapes
-                [ fill (Color.rgb 0.85 0.92 1) ]
-                [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
-             ]
-                ++ drawSpeaking "The King Sword is\nevil and will stop\nanyone who visits\nhis castle."
-            )
+        -- [ Canvas.toHtmlWith
+        --     { width = gameWidth
+        --     , height = gameHeight
+        --     , textures = []
+        --     }
+        --     [ class "block pixel-art" ]
+        --     ([ shapes
+        --         [ fill (Color.rgb 0.85 0.92 1) ]
+        --         [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+        --      ]
+        --         ++ showSpeaking
+        --             model.speaking
+        --             "The King Sword is\nevil and will stop\nanyone who visits\nhis castle."
+        --     )
+        -- ]
+        [ case model.gameSetupStatus of
+            SettingUp ->
+                Canvas.toHtmlWith
+                    { width = gameWidth
+                    , height = gameHeight
+                    , textures = [ Canvas.Texture.loadFromImageUrl "FFL-TowerBase.png" TextureLoaded ]
+                    }
+                    []
+                    [ Canvas.text
+                        [ font { size = 48, family = "sans-serif" }, align Center ]
+                        ( 50, 50 )
+                        "Loading textures..."
+                    ]
+
+            SetupFailed ->
+                Canvas.toHtmlWith
+                    { width = gameWidth
+                    , height = gameHeight
+                    , textures = []
+                    }
+                    []
+                    [ Canvas.text
+                        [ font { size = 48, family = "sans-serif" }, align Center ]
+                        ( 50, 50 )
+                        "Setup failed."
+                    ]
+
+            SetupComplete _ ->
+                Canvas.toHtmlWith
+                    { width = gameWidth
+                    , height = gameHeight
+                    , textures = []
+                    }
+                    []
+                    [ Canvas.text
+                        [ font { size = 48, family = "sans-serif" }, align Center ]
+                        ( 50, 50 )
+                        "Sprites loaded, waiting for level..."
+                    ]
+
+            MapDataLoaded _ ->
+                Canvas.toHtmlWith
+                    { width = gameWidth
+                    , height = gameHeight
+                    , textures = []
+                    }
+                    []
+                    [ Canvas.text
+                        [ font { size = 48, family = "sans-serif" }, align Center ]
+                        ( 50, 50 )
+                        "Sprites and Map JSON loaded, waiting on level image..."
+                    ]
+
+            LevelLoaded { sprites, mapImage } ->
+                Canvas.toHtmlWith
+                    { width = gameWidth
+                    , height = gameHeight
+                    , textures = []
+                    }
+                    -- [ class "block scale-[2] pixel-art" ]
+                    [ class "block pixel-art" ]
+                    ([ shapes
+                        [ fill (Color.rgb 0.85 0.92 1) ]
+                        [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+                     ]
+                        ++ [ Canvas.group
+                                [ Canvas.Settings.Advanced.transform
+                                    [ Canvas.Settings.Advanced.translate
+                                        (model.cameraX + 80)
+                                        (model.cameraY + 60)
+                                    ]
+                                ]
+                                ([]
+                                    ++ [ Canvas.texture
+                                            [ Canvas.Settings.Advanced.imageSmoothing False ]
+                                            ( -model.offsetX, -model.offsetY )
+                                            mapImage
+                                       ]
+                                    ++ drawWorld model.world model.cameraX model.cameraY
+                                    ++ getCharacterFrame model sprites
+                                    ++ drawNPCs model.npcs sprites
+                                )
+                           ]
+                        ++ showSpeaking
+                            model.speaking
+                            "The King Sword is\nevil and will stop\nanyone who visits\nhis castle."
+                    )
+        , div [ class "flex flex-col" ]
+            [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
+            , div [] [ text ("Character X: " ++ (model.characterX |> String.fromFloat)) ]
+            , div [] [ text ("Character Y: " ++ (model.characterY |> String.fromFloat)) ]
+            , div [] [ text ("Camera X: " ++ (model.cameraX |> String.fromFloat)) ]
+            , div [] [ text ("Camera Y: " ++ (model.cameraY |> String.fromFloat)) ]
+            ]
         ]
-
-
-
--- [ case model.gameSetupStatus of
---     SettingUp ->
---         Canvas.toHtmlWith
---             { width = gameWidth
---             , height = gameHeight
---             , textures = [ Canvas.Texture.loadFromImageUrl "FFL-TowerBase.png" TextureLoaded ]
---             }
---             []
---             [ Canvas.text
---                 [ font { size = 48, family = "sans-serif" }, align Center ]
---                 ( 50, 50 )
---                 "Loading textures..."
---             ]
---     SetupFailed ->
---         Canvas.toHtmlWith
---             { width = gameWidth
---             , height = gameHeight
---             , textures = []
---             }
---             []
---             [ Canvas.text
---                 [ font { size = 48, family = "sans-serif" }, align Center ]
---                 ( 50, 50 )
---                 "Setup failed."
---             ]
---     SetupComplete _ ->
---         Canvas.toHtmlWith
---             { width = gameWidth
---             , height = gameHeight
---             , textures = []
---             }
---             []
---             [ Canvas.text
---                 [ font { size = 48, family = "sans-serif" }, align Center ]
---                 ( 50, 50 )
---                 "Sprites loaded, waiting for level..."
---             ]
---     MapDataLoaded _ ->
---         Canvas.toHtmlWith
---             { width = gameWidth
---             , height = gameHeight
---             , textures = []
---             }
---             []
---             [ Canvas.text
---                 [ font { size = 48, family = "sans-serif" }, align Center ]
---                 ( 50, 50 )
---                 "Sprites and Map JSON loaded, waiting on level image..."
---             ]
---     LevelLoaded { sprites, mapImage } ->
---         Canvas.toHtmlWith
---             { width = gameWidth
---             , height = gameHeight
---             , textures = []
---             }
---             -- [ class "block scale-[2] pixel-art" ]
---             [ class "block pixel-art" ]
---             ([ shapes
---                 [ fill (Color.rgb 0.85 0.92 1) ]
---                 [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
---              ]
---                 ++ [ Canvas.group
---                         [ Canvas.Settings.Advanced.transform
---                             [ Canvas.Settings.Advanced.translate
---                                 (model.cameraX + 80)
---                                 (model.cameraY + 60)
---                             ]
---                         ]
---                         ([]
---                             ++ [ Canvas.texture
---                                     [ Canvas.Settings.Advanced.imageSmoothing False ]
---                                     ( -model.offsetX, -model.offsetY )
---                                     mapImage
---                                ]
---                             ++ drawWorld model.world model.cameraX model.cameraY
---                             ++ getCharacterFrame model sprites
---                             ++ drawNPCs model.npcs sprites
---                         )
---                    ]
---                 ++ drawSpeaking "Gen-Bu has hidden\n the key to the door\n in the Statue of Hero."
---             )
--- , div [ class "flex flex-col" ]
---     [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
---     , div [] [ text ("Character X: " ++ (model.characterX |> String.fromFloat)) ]
---     , div [] [ text ("Character Y: " ++ (model.characterY |> String.fromFloat)) ]
---     , div [] [ text ("Camera X: " ++ (model.cameraX |> String.fromFloat)) ]
---     , div [] [ text ("Camera Y: " ++ (model.cameraY |> String.fromFloat)) ]
---     ]
--- ]
 
 
 getCharacterFrame : Model -> Sprites -> List Canvas.Renderable
@@ -1228,11 +1292,26 @@ drawNPCs npcs sprites =
         npcs
 
 
+showSpeaking : Bool -> String -> List Canvas.Renderable
+showSpeaking speaking speech =
+    if speaking == True then
+        drawSpeaking speech
+
+    else
+        []
+
+
 drawSpeaking : String -> List Canvas.Renderable
 drawSpeaking speech =
     let
+        margin =
+            6
+
         fontSize =
             8
+
+        startY =
+            gameHeightFloat / 2 + margin
 
         lines =
             String.split "\n" speech
@@ -1242,17 +1321,79 @@ drawSpeaking speech =
                             [ font { size = fontSize, family = "FinalFantasyAdventureGB-Pixel" }
                             , align Left
                             ]
-                            ( 9, fontSize * (toFloat index + 1) + (fontSize * toFloat index) + 6 )
+                            ( 9, fontSize * (toFloat index + 1) + (fontSize * toFloat index) + startY + margin )
                             (String.trim str)
                     )
+
+        textCorner =
+            3
+
+        textCorner2 =
+            4
+
+        textCorner3 =
+            5
     in
     [ shapes
         [ fill (Color.rgb 1 1 1) ]
         [ rect
-            -- ( 0, gameHeightFloat - 64 )
-            ( 0, 0 )
+            ( 0, startY )
             gameWidthFloat
-            gameHeightFloat
+            (gameHeightFloat - startY)
+        ]
+    , shapes
+        [ lineWidth 1
+        , lineCap RoundCap
+        , stroke (Color.rgb 0 0 0)
+        ]
+        [ path
+            ( 0, startY )
+            [ moveTo ( textCorner, startY )
+            , lineTo ( gameWidthFloat - textCorner, startY )
+            , lineTo ( gameWidthFloat, startY + textCorner )
+            , lineTo ( gameWidthFloat, startY + (gameHeightFloat / 2) - margin - textCorner )
+            , lineTo ( gameWidthFloat - textCorner, startY + (gameHeightFloat / 2) - margin )
+            , lineTo ( textCorner, startY + (gameHeightFloat / 2) - margin )
+            , lineTo ( 0, startY + (gameHeightFloat / 2) - margin - textCorner )
+            , lineTo ( 0, startY + textCorner )
+            , lineTo ( textCorner, startY )
+            ]
+        ]
+    , shapes
+        [ lineWidth 1
+        , lineCap RoundCap
+        , stroke (Color.rgb 0.5 0.5 0.5)
+        ]
+        [ path
+            ( 0, startY )
+            [ moveTo ( textCorner2 - 1, startY + 1 )
+            , lineTo ( gameWidthFloat - textCorner, startY + 1 )
+            , lineTo ( gameWidthFloat - 1, startY + textCorner )
+            , lineTo ( gameWidthFloat - 1, startY + (gameHeightFloat / 2) - margin - textCorner )
+            , lineTo ( gameWidthFloat - textCorner, startY + (gameHeightFloat / 2) - margin - 1 )
+            , lineTo ( textCorner, startY + (gameHeightFloat / 2) - margin - 1 )
+            , lineTo ( 1, startY + (gameHeightFloat / 2) - margin - textCorner )
+            , lineTo ( 1, startY + textCorner )
+            , lineTo ( textCorner2 - 1, startY + 1 )
+            ]
+        ]
+    , shapes
+        [ lineWidth 1
+        , lineCap RoundCap
+        , stroke (Color.rgb 0.3 0.3 0.3)
+        ]
+        [ path
+            ( 0, startY )
+            [ moveTo ( textCorner2 - 1, startY + 2 )
+            , lineTo ( gameWidthFloat - textCorner, startY + 2 )
+            , lineTo ( gameWidthFloat - 2, startY + textCorner )
+            , lineTo ( gameWidthFloat - 2, startY + (gameHeightFloat / 2) - margin - textCorner )
+            , lineTo ( gameWidthFloat - textCorner, startY + (gameHeightFloat / 2) - margin - 2 )
+            , lineTo ( textCorner, startY + (gameHeightFloat / 2) - margin - 2 )
+            , lineTo ( 2, startY + (gameHeightFloat / 2) - margin - textCorner )
+            , lineTo ( 2, startY + textCorner )
+            , lineTo ( textCorner2 - 1, startY + 2 )
+            ]
         ]
     ]
         ++ lines
@@ -1399,7 +1540,6 @@ init _ =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     if model.paused == False then
-        -- animator |> Animator.toSubscription Tick model
         Sub.batch
             [ onVisibilityChange VisibilityChange
             , onAnimationFrameDelta Frame
@@ -1407,6 +1547,13 @@ subscriptions model =
             , onKeyUp keyDecoderReleased
             , onImageFromJavaScript ImageLoadedFromJavaScript
             , onCanvasBoundingRect CanvasBoundingRectLoaded
+            ]
+
+    else if model.paused == False && model.speaking == True then
+        Sub.batch
+            [ onVisibilityChange VisibilityChange
+            , onKeyDown keyDecoderPressed
+            , onKeyUp keyDecoderReleased
             ]
 
     else
