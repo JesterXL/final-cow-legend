@@ -5,7 +5,7 @@ import Fuzz exposing (..)
 import Test exposing (..)
 import Vector29
 import Vector31
-import World exposing (Col(..), Row(..), TileType(..), defaultWorld, getCell, setCell)
+import World exposing (Col(..), Row(..), TileType(..), colToInt, defaultWorld, getCell, rowToInt, setCell)
 
 
 suite : Test
@@ -89,4 +89,10 @@ suite =
                     in
                     Expect.equal legit True
             ]
+        , test "rowToInt Row0 should be 0" <|
+            \_ ->
+                Expect.equal (rowToInt Row0) 0
+        , test "colToInt Col0 should be 0" <|
+            \_ ->
+                Expect.equal (colToInt Col0) 0
         ]

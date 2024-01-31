@@ -1,4 +1,4 @@
-module World exposing (Col(..), Row(..), TileType(..), defaultWorld, getCell, setCell)
+module World exposing (Col(..), Row(..), TileType(..), colToInt, defaultWorld, getCell, rowToInt, setCell)
 
 import Vector29
 import Vector31
@@ -310,3 +310,191 @@ setCell row col newValue world =
             Vector29.set rowIndex updatedColVector world
     in
     updatedRowVector
+
+
+rowToInt : Row -> Int
+rowToInt row =
+    case row of
+        Row0 ->
+            0
+
+        Row1 ->
+            1
+
+        Row2 ->
+            2
+
+        Row3 ->
+            3
+
+        Row4 ->
+            4
+
+        Row5 ->
+            5
+
+        Row6 ->
+            6
+
+        Row7 ->
+            7
+
+        Row8 ->
+            8
+
+        Row9 ->
+            9
+
+        Row10 ->
+            10
+
+        Row11 ->
+            11
+
+        Row12 ->
+            12
+
+        Row13 ->
+            13
+
+        Row14 ->
+            14
+
+        Row15 ->
+            15
+
+        Row16 ->
+            16
+
+        Row17 ->
+            17
+
+        Row18 ->
+            18
+
+        Row19 ->
+            19
+
+        Row20 ->
+            20
+
+        Row21 ->
+            21
+
+        Row22 ->
+            22
+
+        Row23 ->
+            23
+
+        Row24 ->
+            24
+
+        Row25 ->
+            25
+
+        Row26 ->
+            26
+
+        Row27 ->
+            27
+
+        Row28 ->
+            28
+
+
+colToInt : Col -> Int
+colToInt col =
+    case col of
+        Col0 ->
+            0
+
+        Col1 ->
+            1
+
+        Col2 ->
+            2
+
+        Col3 ->
+            3
+
+        Col4 ->
+            4
+
+        Col5 ->
+            5
+
+        Col6 ->
+            6
+
+        Col7 ->
+            7
+
+        Col8 ->
+            8
+
+        Col9 ->
+            9
+
+        Col10 ->
+            10
+
+        Col11 ->
+            11
+
+        Col12 ->
+            12
+
+        Col13 ->
+            13
+
+        Col14 ->
+            14
+
+        Col15 ->
+            15
+
+        Col16 ->
+            16
+
+        Col17 ->
+            17
+
+        Col18 ->
+            18
+
+        Col19 ->
+            19
+
+        Col20 ->
+            20
+
+        Col21 ->
+            21
+
+        Col22 ->
+            22
+
+        Col23 ->
+            23
+
+        Col24 ->
+            24
+
+        Col25 ->
+            25
+
+        Col26 ->
+            26
+
+        Col27 ->
+            27
+
+        Col28 ->
+            28
+
+        Col29 ->
+            29
+
+        Col30 ->
+            30
