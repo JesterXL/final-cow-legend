@@ -4,9 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "elm-live src/Main.elm --dir=./src --start-page=index.html --hot -- --output=src/elm.js",
+    "start": "elm-live src/Main.elm --dir=./src --start-page=index.html -- --output=src/elm.js",
     "start2": "elm-live src/Main.elm --dir=./src --start-page=index.html -- --output=src/elm.js",
-    "watch:css": "tailwindcss -c tailwind.config.js -i ./src/tailwind.css -o src/tailwind.build.css --watch"
+    "watch:css": "tailwindcss -c tailwind.config.js -i ./src/tailwind.css -o src/tailwind.build.css --watch",
+    "test": "elm-test 'tests/**/*Test.elm'",
+    "test:watch": "elm-test 'tests/**/*Test.elm' --watch"
   },
   "keywords": [],
   "author": "",
@@ -14,6 +16,7 @@
   "devDependencies": {
     "elm": "^0.19.1-5",
     "elm-live": "^4.0.2",
+    "elm-test": "^0.19.1-revision12",
     "tailwindcss": "^3.3.3"
   }
 }

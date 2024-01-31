@@ -5,7 +5,7 @@ import Fuzz exposing (..)
 import Test exposing (..)
 import Vector29
 import Vector31
-import World exposing (TileType(..), defaultWorld)
+import World exposing (TileType(..), defaultWorld, getCell)
 
 
 suite : Test
@@ -42,5 +42,17 @@ suite =
                                     True
                     in
                     Expect.equal allWalkable True
+            , test "should be able to get a cell tile" <|
+                \_ ->
+                    let
+                        walkable =
+                            case defaultWorld |> getCell Vector29.Index0 Vector31.Index0 of
+                                Walkable ->
+                                    True
+
+                                NotWalkable ->
+                                    False
+                    in
+                    Expect.equal walkable True
             ]
         ]
