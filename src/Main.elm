@@ -54,6 +54,7 @@ type alias Model =
     , currentSeed : Random.Seed
     , paused : Bool
     , speaking : Bool
+    , menuScreenStatus : MenuScreenStatus
     , speechText : String
     , time : Int
     , gameSetupStatus : GameSetupStatus
@@ -128,6 +129,76 @@ type alias NPC =
     }
 
 
+type MenuScreenStatus
+    = NoMenuScreen
+    | SpeechScreen String
+    | Inn InnKeeperStatus
+    | WeaponShop ShopStatus
+    | PotionShop ShopStatus
+    | CharacterConfig CharacterScreenStatus
+    | HouseOfLife HouseOfLifeScreenStatus
+
+
+type InnKeeperStatus
+    = InnDecision
+    | InnOk
+
+
+type ShopStatus
+    = ShopWaiting
+    | ShopSell (List Item)
+    | ShopConfirmSell Item
+    | ShopSold Item
+    | ShopBuy (List Item)
+    | ShopBought Item
+
+
+type alias Item =
+    { name : String, durability : Int, gold : Int, itemType : ItemType }
+
+
+type ItemType
+    = Weapon
+    | Armor
+    | Spellbook
+    | Potion
+
+
+type CharacterScreenStatus
+    = CharacterScreenWaiting
+    | CharacterScreenAbilities
+    | CharacterScreenItems
+    | CharacterScreenEquip EquipScreen
+    | CharacterScreenSave
+
+
+type EquipScreen
+    = EquipChooseCharacter
+    | EquipChooseSlot
+
+
+type CharacterOrderScreenStatus
+    = OrderChooseSpeed
+    | OrderChooseCharacter
+    | OrderChooseSlot
+    | OrderChooseSlotConfirmed
+
+
+type HouseOfLifeScreenStatus
+    = HouseOfLifeChooseCharacter
+    | HouseOfLifeConfirm
+
+
+type BattleScreen
+    = BattleScreenWaiting
+    | BattleScreenFightOrRun
+    | BattleScreenCharacterTurn
+    | BattleScreenCharacterTurnChooseTarget
+    | BattleScreenMonsterTurn
+    | BattleScreenWin
+    | BattleScreenLost
+
+
 initialModel : Random.Seed -> Model
 initialModel seed =
     { initialSeed = seed
@@ -135,6 +206,7 @@ initialModel seed =
     , paused = False
     , speaking = False
     , speechText = ""
+    , menuScreenStatus = NoMenuScreen
     , time = 0
     , gameSetupStatus = SettingUp
     , leftPressed = False
@@ -178,6 +250,14 @@ type Direction
     | SReleased
     | DPressed
     | DReleased
+    | AButtonPressed
+    | AButtonReleased
+    | BButtonPressed
+    | BButtonReleased
+    | StartPressed
+    | StartReleased
+    | SelectPressed
+    | SelectReleased
     | Other
 
 
@@ -220,6 +300,18 @@ toDirectionPressed string =
         "d" ->
             MoveCursor DPressed
 
+        "l" ->
+            MoveCursor AButtonPressed
+
+        "k" ->
+            MoveCursor BButtonPressed
+
+        "i" ->
+            MoveCursor StartPressed
+
+        "j" ->
+            MoveCursor SelectPressed
+
         _ ->
             MoveCursor Other
 
@@ -253,6 +345,18 @@ toDirectionReleased string =
 
         "d" ->
             MoveCursor DReleased
+
+        "l" ->
+            MoveCursor AButtonPressed
+
+        "k" ->
+            MoveCursor BButtonPressed
+
+        "i" ->
+            MoveCursor StartPressed
+
+        "j" ->
+            MoveCursor SelectPressed
 
         _ ->
             MoveCursor Other
@@ -470,6 +574,12 @@ update msg model =
                     --     _ =
                     --         Debug.log "datPath" datPath
                     -- in
+                    ( model, Cmd.none )
+
+                EnterReleased ->
+                    ( model, Cmd.none )
+
+                AButtonPressed ->
                     let
                         _ =
                             Debug.log "npc" (getTargetNPCCharacterIsFacing model)
@@ -495,7 +605,33 @@ update msg model =
                     else
                         ( { model | speaking = False }, Cmd.none )
 
-                EnterReleased ->
+                AButtonReleased ->
+                    ( model, Cmd.none )
+
+                BButtonPressed ->
+                    if model.menuScreenStatus == CharacterConfig CharacterScreenWaiting then
+                        ( { model | menuScreenStatus = NoMenuScreen }, Cmd.none )
+
+                    else
+                        ( model, Cmd.none )
+
+                BButtonReleased ->
+                    ( model, Cmd.none )
+
+                StartPressed ->
+                    if model.menuScreenStatus == NoMenuScreen then
+                        ( { model | menuScreenStatus = CharacterConfig CharacterScreenWaiting }, Cmd.none )
+
+                    else
+                        ( model, Cmd.none )
+
+                StartReleased ->
+                    ( model, Cmd.none )
+
+                SelectPressed ->
+                    ( model, Cmd.none )
+
+                SelectReleased ->
                     ( model, Cmd.none )
 
                 WPressed ->
@@ -1144,39 +1280,65 @@ view model =
                     ]
 
             LevelLoaded { sprites, mapImage } ->
-                Canvas.toHtmlWith
-                    { width = gameWidth
-                    , height = gameHeight
-                    , textures = []
-                    }
-                    -- [ class "block scale-[2] pixel-art" ]
-                    [ class "block pixel-art" ]
-                    ([ shapes
-                        [ fill (Color.rgb 0.85 0.92 1) ]
-                        [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
-                     ]
-                        ++ [ Canvas.group
-                                [ Canvas.Settings.Advanced.transform
-                                    [ Canvas.Settings.Advanced.translate
-                                        (model.cameraX + 80)
-                                        (model.cameraY + 60)
-                                    ]
-                                ]
-                                ([]
-                                    ++ [ Canvas.texture
-                                            [ Canvas.Settings.Advanced.imageSmoothing False ]
-                                            ( -model.offsetX, -model.offsetY )
-                                            mapImage
-                                       ]
-                                    ++ drawWorld model.world model.cameraX model.cameraY
-                                    ++ getCharacterFrame model sprites
-                                    ++ drawNPCs model.npcs sprites
-                                )
-                           ]
-                        ++ showSpeaking
-                            model.speaking
-                            model.speechText
-                    )
+                case model.menuScreenStatus of
+                    NoMenuScreen ->
+                        Canvas.toHtmlWith
+                            { width = gameWidth
+                            , height = gameHeight
+                            , textures = []
+                            }
+                            -- [ class "block scale-[2] pixel-art" ]
+                            [ class "block pixel-art" ]
+                            ([ shapes
+                                [ fill (Color.rgb 0.85 0.92 1) ]
+                                [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+                             ]
+                                ++ [ Canvas.group
+                                        [ Canvas.Settings.Advanced.transform
+                                            [ Canvas.Settings.Advanced.translate
+                                                (model.cameraX + 80)
+                                                (model.cameraY + 60)
+                                            ]
+                                        ]
+                                        ([]
+                                            ++ [ Canvas.texture
+                                                    [ Canvas.Settings.Advanced.imageSmoothing False ]
+                                                    ( -model.offsetX, -model.offsetY )
+                                                    mapImage
+                                               ]
+                                            ++ drawWorld model.world model.cameraX model.cameraY
+                                            ++ getCharacterFrame model sprites
+                                            ++ drawNPCs model.npcs sprites
+                                        )
+                                   ]
+                                ++ showSpeaking
+                                    model.speaking
+                                    model.speechText
+                            )
+
+                    CharacterConfig CharacterScreenWaiting ->
+                        Canvas.toHtmlWith
+                            { width = gameWidth
+                            , height = gameHeight
+                            , textures = []
+                            }
+                            [ class "block pixel-art" ]
+                            [ shapes
+                                [ fill (Color.rgb 0 1 0) ]
+                                [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+                            ]
+
+                    _ ->
+                        Canvas.toHtmlWith
+                            { width = gameWidth
+                            , height = gameHeight
+                            , textures = []
+                            }
+                            [ class "block pixel-art" ]
+                            [ shapes
+                                [ fill (Color.rgb 1 0 0) ]
+                                [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+                            ]
         , div [ class "flex flex-col" ]
             [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
             , div [] [ text ("Character X: " ++ (model.characterX |> String.fromFloat)) ]
