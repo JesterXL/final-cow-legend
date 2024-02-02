@@ -7,8 +7,8 @@ console.log(
     )
     .reduce(
         (acc, i) =>
-            `${acc}${i} ->
-    Just Col${i}\n`,
+            `${acc}Vector31.Index${i} ->
+    Col${i}\n`,
         ""
     )
 )

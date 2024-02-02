@@ -27,7 +27,7 @@ import Set
 import Task exposing (Task)
 import Vector29
 import Vector31
-import World exposing (Col(..), Row(..), TileType(..), World, colToInt, defaultWorld, getCell, intToCol, intToRow, rowToInt)
+import World exposing (Col(..), Row(..), TileType(..), World, colToIndex, colToInt, defaultWorld, getCell, indexToCol, indexToRow, intToCol, intToRow, rowToIndex, rowToInt)
 import Zip exposing (Zip)
 import Zip.Entry
 
@@ -484,6 +484,9 @@ update msg model =
                         desiredRow =
                             getCharacterDesiredRow North model.characterRow
                                 |> Maybe.withDefault model.characterRow
+
+                        _ =
+                            Debug.log "characterRow, desiredRow" ( model.characterRow, desiredRow )
                     in
                     if canMove North model.characterRow model.characterCol model.world == True then
                         ( { model | characterRow = desiredRow, characterFacingDirection = North }, Cmd.none )
@@ -745,8 +748,14 @@ canMove facingDirection characterRow characterCol world =
         desiredRow =
             getCharacterDesiredRow facingDirection characterRow
 
+        _ =
+            Debug.log "desiredRow" desiredRow
+
         desiredCol =
             getCharacterDesiredCol facingDirection characterCol
+
+        _ =
+            Debug.log "desiredCol" desiredCol
     in
     case desiredRow of
         Nothing ->
@@ -781,7 +790,7 @@ getCharacterDesiredRow facingDirection characterRow =
                 |> intToRow
 
         _ ->
-            Nothing
+            Just characterRow
 
 
 getCharacterDesiredCol : FacingDirection -> Col -> Maybe Col
@@ -804,7 +813,7 @@ getCharacterDesiredCol facingDirection characterCol =
                 |> intToCol
 
         _ ->
-            Nothing
+            Just characterCol
 
 
 updateCamera : Model -> Float -> ( Float, Float )
@@ -989,21 +998,6 @@ getCharacterFacingTargetXY row col facingDirection =
 view : Model -> Html Msg
 view model =
     div [ class "flex flex-row overflow-hidden" ]
-        -- [ Canvas.toHtmlWith
-        --     { width = gameWidth
-        --     , height = gameHeight
-        --     , textures = []
-        --     }
-        --     [ class "block pixel-art" ]
-        --     ([ shapes
-        --         [ fill (Color.rgb 0.85 0.92 1) ]
-        --         [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
-        --      ]
-        --         ++ showSpeaking
-        --             model.speaking
-        --             "The King Sword is\nevil and will stop\nanyone who visits\nhis castle."
-        --     )
-        -- ]
         [ case model.gameSetupStatus of
             SettingUp ->
                 Canvas.toHtmlWith
@@ -1380,49 +1374,52 @@ drawWorld world cameraX cameraY =
              --   Canvas.Settings.Advanced.translate cameraX cameraY
             ]
         ]
-        -- (Vector29.indexedMap
-        --     (\rowIndex row ->
-        --         Vector31.indexedMap
-        --             (\colIndex cell ->
-        --                 drawCell rowIndex colIndex cell
-        --             )
-        --             row
-        --             |> Vector31.toList
-        --             |> List.concatMap
-        --                 (\cell -> cell)
-        --     )
-        --     world
-        --     |> Vector29.toList
-        --     |> List.concatMap
-        --         (\cell -> cell)
-        -- )
-        []
+        (Vector29.indexedMap
+            (\rowIndex row ->
+                Vector31.indexedMap
+                    (\colIndex cell ->
+                        drawCell (rowIndex |> indexToRow) (colIndex |> indexToCol) cell
+                    )
+                    row
+                    |> Vector31.toList
+                    |> List.concatMap
+                        (\cell -> cell)
+            )
+            world
+            |> Vector29.toList
+            |> List.concatMap
+                (\cell -> cell)
+        )
     ]
 
 
 drawCell : Row -> Col -> TileType -> List Canvas.Renderable
 drawCell row col tileType =
-    -- let
-    --     rowInt =
-    --         Vector29.indexToInt row
-    --     colInt =
-    --         Vector31.indexToInt col
-    -- in
-    -- [ shapes
-    --     [ if tileType == Walkable then
-    --         CanvasSettings.fill Color.green
-    --       else
-    --         CanvasSettings.fill Color.red
-    --     ]
-    --     [ rect ( Basics.toFloat colInt * 16, Basics.toFloat rowInt * 16 ) 16 16 ]
-    -- , shapes
-    --     [ CanvasSettings.stroke Color.lightGreen ]
-    --     [ rect
-    --     ( Basics.toFloat colInt * 16
-    --     , Basics.toFloat rowInt * 16 )
-    --     16 16 ]
-    -- ]
-    []
+    let
+        rowInt =
+            rowToInt row
+
+        colInt =
+            colToInt col
+    in
+    [ shapes
+        [ if tileType == Walkable then
+            CanvasSettings.fill Color.green
+
+          else
+            CanvasSettings.fill Color.red
+        ]
+        [ rect ( Basics.toFloat colInt * 16, Basics.toFloat rowInt * 16 ) 16 16 ]
+    , shapes
+        [ CanvasSettings.stroke Color.lightGreen ]
+        [ rect
+            ( Basics.toFloat colInt * 16
+            , Basics.toFloat rowInt * 16
+            )
+            16
+            16
+        ]
+    ]
 
 
 init : () -> ( Model, Cmd Msg )

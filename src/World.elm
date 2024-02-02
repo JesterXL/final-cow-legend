@@ -1,4 +1,4 @@
-module World exposing (Col(..), Row(..), TileType(..), World, colToInt, defaultWorld, getCell, intToCol, intToRow, rowToInt, setCell)
+module World exposing (Col(..), Row(..), TileType(..), World, colToIndex, colToInt, defaultWorld, getCell, indexToCol, indexToRow, intToCol, intToRow, rowToIndex, rowToInt, setCell)
 
 import Vector29
 import Vector31
@@ -692,3 +692,191 @@ intToCol value =
 
         _ ->
             Nothing
+
+
+indexToRow : Vector29.Index -> Row
+indexToRow index =
+    case index of
+        Vector29.Index0 ->
+            Row0
+
+        Vector29.Index1 ->
+            Row1
+
+        Vector29.Index2 ->
+            Row2
+
+        Vector29.Index3 ->
+            Row3
+
+        Vector29.Index4 ->
+            Row4
+
+        Vector29.Index5 ->
+            Row5
+
+        Vector29.Index6 ->
+            Row6
+
+        Vector29.Index7 ->
+            Row7
+
+        Vector29.Index8 ->
+            Row8
+
+        Vector29.Index9 ->
+            Row9
+
+        Vector29.Index10 ->
+            Row10
+
+        Vector29.Index11 ->
+            Row11
+
+        Vector29.Index12 ->
+            Row12
+
+        Vector29.Index13 ->
+            Row13
+
+        Vector29.Index14 ->
+            Row14
+
+        Vector29.Index15 ->
+            Row15
+
+        Vector29.Index16 ->
+            Row16
+
+        Vector29.Index17 ->
+            Row17
+
+        Vector29.Index18 ->
+            Row18
+
+        Vector29.Index19 ->
+            Row19
+
+        Vector29.Index20 ->
+            Row20
+
+        Vector29.Index21 ->
+            Row21
+
+        Vector29.Index22 ->
+            Row22
+
+        Vector29.Index23 ->
+            Row23
+
+        Vector29.Index24 ->
+            Row24
+
+        Vector29.Index25 ->
+            Row25
+
+        Vector29.Index26 ->
+            Row26
+
+        Vector29.Index27 ->
+            Row27
+
+        Vector29.Index28 ->
+            Row28
+
+
+indexToCol : Vector31.Index -> Col
+indexToCol index =
+    case index of
+        Vector31.Index0 ->
+            Col0
+
+        Vector31.Index1 ->
+            Col1
+
+        Vector31.Index2 ->
+            Col2
+
+        Vector31.Index3 ->
+            Col3
+
+        Vector31.Index4 ->
+            Col4
+
+        Vector31.Index5 ->
+            Col5
+
+        Vector31.Index6 ->
+            Col6
+
+        Vector31.Index7 ->
+            Col7
+
+        Vector31.Index8 ->
+            Col8
+
+        Vector31.Index9 ->
+            Col9
+
+        Vector31.Index10 ->
+            Col10
+
+        Vector31.Index11 ->
+            Col11
+
+        Vector31.Index12 ->
+            Col12
+
+        Vector31.Index13 ->
+            Col13
+
+        Vector31.Index14 ->
+            Col14
+
+        Vector31.Index15 ->
+            Col15
+
+        Vector31.Index16 ->
+            Col16
+
+        Vector31.Index17 ->
+            Col17
+
+        Vector31.Index18 ->
+            Col18
+
+        Vector31.Index19 ->
+            Col19
+
+        Vector31.Index20 ->
+            Col20
+
+        Vector31.Index21 ->
+            Col21
+
+        Vector31.Index22 ->
+            Col22
+
+        Vector31.Index23 ->
+            Col23
+
+        Vector31.Index24 ->
+            Col24
+
+        Vector31.Index25 ->
+            Col25
+
+        Vector31.Index26 ->
+            Col26
+
+        Vector31.Index27 ->
+            Col27
+
+        Vector31.Index28 ->
+            Col28
+
+        Vector31.Index29 ->
+            Col29
+
+        Vector31.Index30 ->
+            Col30
