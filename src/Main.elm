@@ -25,6 +25,7 @@ import Json.Encode as Encode
 import Random
 import Set
 import Task exposing (Task)
+import UUID exposing (UUID)
 import Vector29
 import Vector31
 import World exposing (Col(..), Row(..), TileType(..), World, colToIndex, colToInt, defaultWorld, getCell, indexToCol, indexToRow, intToCol, intToRow, rowToIndex, rowToInt)
@@ -53,6 +54,7 @@ type alias Model =
     , currentSeed : Random.Seed
     , paused : Bool
     , speaking : Bool
+    , speechText : String
     , time : Int
     , gameSetupStatus : GameSetupStatus
     , leftPressed : Bool
@@ -73,7 +75,7 @@ type alias Model =
     , offsetY : Float
     , canvasScale : Float
     , canvasBoundingRect : CanvasBoundingRect
-    , npcs : List NPC
+    , npcs : Array NPC
     }
 
 
@@ -115,12 +117,13 @@ type alias Sprites =
 
 
 type alias NPC =
-    { sprite : Texture
+    { id : String
+    , sprite : Texture
     , row : Row
     , col : Col
     , x : Float
     , y : Float
-    , responses : List String
+    , responses : Array String
     , responseIndex : Int
     }
 
@@ -131,6 +134,7 @@ initialModel seed =
     , currentSeed = seed
     , paused = False
     , speaking = False
+    , speechText = ""
     , time = 0
     , gameSetupStatus = SettingUp
     , leftPressed = False
@@ -151,7 +155,7 @@ initialModel seed =
     , offsetY = 0
     , canvasScale = 0
     , canvasBoundingRect = { x = 0, y = 0, width = 0, height = 0 }
-    , npcs = []
+    , npcs = Array.fromList []
     }
 
 
@@ -471,7 +475,22 @@ update msg model =
                             Debug.log "npc" (getTargetNPCCharacterIsFacing model)
                     in
                     if model.speaking == False then
-                        ( { model | speaking = True }, Cmd.none )
+                        case getTargetNPCCharacterIsFacing model of
+                            Nothing ->
+                                ( model, Cmd.none )
+
+                            Just npcFound ->
+                                let
+                                    ( updatedNPC, speechText ) =
+                                        getNextNPCSpeechText npcFound
+                                in
+                                ( { model
+                                    | speaking = True
+                                    , speechText = speechText
+                                    , npcs = updateNPCs updatedNPC model.npcs
+                                  }
+                                , Cmd.none
+                                )
 
                     else
                         ( { model | speaking = False }, Cmd.none )
@@ -674,8 +693,16 @@ update msg model =
                                     ( model, Cmd.none )
 
                                 Ok parsedWorld ->
+                                    let
+                                        ( uuidv4, newSeed ) =
+                                            uuidV4 model.currentSeed
+
+                                        ( uuidv4Again, newSeedAgain ) =
+                                            uuidV4 newSeed
+                                    in
                                     ( { model
-                                        | gameSetupStatus =
+                                        | currentSeed = newSeedAgain
+                                        , gameSetupStatus =
                                             LevelLoaded
                                                 { sprites = mapData.sprites
                                                 , mapImage = sprite
@@ -685,15 +712,26 @@ update msg model =
                                         , offsetY = jsonDoc.imageOffsetY
                                         , canvasScale = jsonDoc.canvasScale
                                         , npcs =
-                                            [ { sprite = mapData.sprites.mainCharacterSouth1
-                                              , row = Row4
-                                              , col = Col1
-                                              , x = 0
-                                              , y = 0
-                                              , responses = [ "Gen-Bu has hidden the key to the door in the Statue of Hero." ]
-                                              , responseIndex = 0
-                                              }
-                                            ]
+                                            Array.fromList
+                                                [ { id = uuidv4
+                                                  , sprite = mapData.sprites.mainCharacterSouth1
+                                                  , row = Row4
+                                                  , col = Col1
+                                                  , x = 0
+                                                  , y = 0
+                                                  , responses = Array.fromList [ "Gen-Bu has hidden\nthe key to the\ndoor in the Statue\n of Hero." ]
+                                                  , responseIndex = 0
+                                                  }
+                                                , { id = uuidv4Again
+                                                  , sprite = mapData.sprites.mainCharacterSouth1
+                                                  , row = Row8
+                                                  , col = Col4
+                                                  , x = 0
+                                                  , y = 0
+                                                  , responses = Array.fromList [ "This tower leads\nto Paradise." ]
+                                                  , responseIndex = 0
+                                                  }
+                                                ]
                                       }
                                     , getCanvasBoundingRect ()
                                     )
@@ -723,6 +761,15 @@ update msg model =
 
 
 ---- Update bottom ----
+
+
+uuidV4 : Random.Seed -> ( String, Random.Seed )
+uuidV4 currentSeed =
+    let
+        ( num, newSeed ) =
+            Random.step UUID.generator currentSeed
+    in
+    ( UUID.toRepresentation UUID.Urn num, newSeed )
 
 
 jsonDecoder : Decode.Decoder JSONDecodedDocument
@@ -852,9 +899,9 @@ updateCharacterXAndYNoCamera model timePassed characterTexture =
     )
 
 
-updateNPCsXY : List NPC -> List NPC
+updateNPCsXY : Array NPC -> Array NPC
 updateNPCsXY npcs =
-    List.map
+    Array.map
         (\npc ->
             { npc
                 | x = toFloat (npc.col |> colToInt) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
@@ -973,13 +1020,58 @@ getTargetNPCCharacterIsFacing model =
         model.characterFacingDirection
         |> Maybe.andThen
             (\( targetRow, targetCol ) ->
-                List.filter
+                Array.filter
                     (\npcItem ->
                         npcItem.row == targetRow && npcItem.col == targetCol
                     )
                     model.npcs
-                    |> List.head
+                    |> Array.get 0
             )
+
+
+getNextNPCSpeechText : NPC -> ( NPC, String )
+getNextNPCSpeechText npc =
+    let
+        responseLength =
+            Array.length npc.responses
+    in
+    if responseLength == 0 then
+        ( npc, "ERROR: NPC has no responses." )
+
+    else if responseLength == 1 then
+        ( npc
+        , Array.get 0 npc.responses
+            |> Maybe.withDefault "ERROR: No response found at index."
+        )
+
+    else if npc.responseIndex < responseLength - 1 then
+        ( { npc
+            | responseIndex = npc.responseIndex + 1
+          }
+        , Array.get npc.responseIndex npc.responses
+            |> Maybe.withDefault "ERROR: No response found at index."
+        )
+
+    else
+        ( { npc
+            | responseIndex = 0
+          }
+        , Array.get npc.responseIndex npc.responses
+            |> Maybe.withDefault "ERROR: No response found at index."
+        )
+
+
+updateNPCs : NPC -> Array NPC -> Array NPC
+updateNPCs npc npcs =
+    Array.map
+        (\npcItem ->
+            if npcItem.id /= npc.id then
+                npcItem
+
+            else
+                npc
+        )
+        npcs
 
 
 getCharacterFacingTargetXY : Row -> Col -> FacingDirection -> Maybe ( Row, Col )
@@ -1083,7 +1175,7 @@ view model =
                            ]
                         ++ showSpeaking
                             model.speaking
-                            "The King Sword is\nevil and will stop\nanyone who visits\nhis castle."
+                            model.speechText
                     )
         , div [ class "flex flex-col" ]
             [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
@@ -1159,9 +1251,9 @@ getCharacterFrame model sprites =
                 ]
 
 
-drawNPCs : List NPC -> Sprites -> List Canvas.Renderable
+drawNPCs : Array NPC -> Sprites -> List Canvas.Renderable
 drawNPCs npcs sprites =
-    List.foldl
+    Array.foldl
         (\npc acc ->
             acc
                 ++ [ Canvas.texture
