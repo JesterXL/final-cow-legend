@@ -1225,128 +1225,142 @@ getCharacterFacingTargetXY row col facingDirection =
 
 view : Model -> Html Msg
 view model =
-    div [ class "flex flex-row overflow-hidden" ]
-        [ case model.gameSetupStatus of
-            SettingUp ->
-                Canvas.toHtmlWith
-                    { width = gameWidth
-                    , height = gameHeight
-                    , textures = [ Canvas.Texture.loadFromImageUrl "FFL-TowerBase.png" TextureLoaded ]
-                    }
-                    []
-                    [ Canvas.text
-                        [ font { size = 48, family = "sans-serif" }, align Center ]
-                        ( 50, 50 )
-                        "Loading textures..."
-                    ]
-
-            SetupFailed ->
-                Canvas.toHtmlWith
-                    { width = gameWidth
-                    , height = gameHeight
-                    , textures = []
-                    }
-                    []
-                    [ Canvas.text
-                        [ font { size = 48, family = "sans-serif" }, align Center ]
-                        ( 50, 50 )
-                        "Setup failed."
-                    ]
-
-            SetupComplete _ ->
-                Canvas.toHtmlWith
-                    { width = gameWidth
-                    , height = gameHeight
-                    , textures = []
-                    }
-                    []
-                    [ Canvas.text
-                        [ font { size = 48, family = "sans-serif" }, align Center ]
-                        ( 50, 50 )
-                        "Sprites loaded, waiting for level..."
-                    ]
-
-            MapDataLoaded _ ->
-                Canvas.toHtmlWith
-                    { width = gameWidth
-                    , height = gameHeight
-                    , textures = []
-                    }
-                    []
-                    [ Canvas.text
-                        [ font { size = 48, family = "sans-serif" }, align Center ]
-                        ( 50, 50 )
-                        "Sprites and Map JSON loaded, waiting on level image..."
-                    ]
-
-            LevelLoaded { sprites, mapImage } ->
-                case model.menuScreenStatus of
-                    NoMenuScreen ->
-                        Canvas.toHtmlWith
-                            { width = gameWidth
-                            , height = gameHeight
-                            , textures = []
-                            }
-                            -- [ class "block scale-[2] pixel-art" ]
-                            [ class "block pixel-art" ]
-                            ([ shapes
-                                [ fill (Color.rgb 0.85 0.92 1) ]
-                                [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
-                             ]
-                                ++ [ Canvas.group
-                                        [ Canvas.Settings.Advanced.transform
-                                            [ Canvas.Settings.Advanced.translate
-                                                (model.cameraX + 80)
-                                                (model.cameraY + 60)
-                                            ]
-                                        ]
-                                        ([]
-                                            ++ [ Canvas.texture
-                                                    [ Canvas.Settings.Advanced.imageSmoothing False ]
-                                                    ( -model.offsetX, -model.offsetY )
-                                                    mapImage
-                                               ]
-                                            ++ drawWorld model.world model.cameraX model.cameraY
-                                            ++ getCharacterFrame model sprites
-                                            ++ drawNPCs model.npcs sprites
-                                        )
-                                   ]
-                                ++ showSpeaking
-                                    model.speaking
-                                    model.speechText
-                            )
-
-                    CharacterConfig CharacterScreenWaiting ->
-                        Canvas.toHtmlWith
-                            { width = gameWidth
-                            , height = gameHeight
-                            , textures = []
-                            }
-                            [ class "block pixel-art" ]
-                            [ shapes
-                                [ fill (Color.rgb 0 1 0) ]
-                                [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
-                            ]
-
-                    _ ->
-                        Canvas.toHtmlWith
-                            { width = gameWidth
-                            , height = gameHeight
-                            , textures = []
-                            }
-                            [ class "block pixel-art" ]
-                            [ shapes
-                                [ fill (Color.rgb 1 0 0) ]
-                                [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
-                            ]
-        , div [ class "flex flex-col" ]
-            [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
-            , div [] [ text ("Character X: " ++ (model.characterX |> String.fromFloat)) ]
-            , div [] [ text ("Character Y: " ++ (model.characterY |> String.fromFloat)) ]
-            , div [] [ text ("Camera X: " ++ (model.cameraX |> String.fromFloat)) ]
-            , div [] [ text ("Camera Y: " ++ (model.cameraY |> String.fromFloat)) ]
-            ]
+    div
+        [ class "flex flex-row overflow-hidden" ]
+        [ Canvas.toHtmlWith
+            { width = gameWidth
+            , height = gameHeight
+            , textures = []
+            }
+            [ class "block pixel-art" ]
+            ([ shapes
+                [ fill (Color.rgb 0 1 0) ]
+                [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+             ]
+                ++ characterConfigScreen model
+            )
         ]
+
+
+
+-- [
+-- case model.gameSetupStatus of
+--     SettingUp ->
+--         Canvas.toHtmlWith
+--             { width = gameWidth
+--             , height = gameHeight
+--             , textures = [ Canvas.Texture.loadFromImageUrl "FFL-TowerBase.png" TextureLoaded ]
+--             }
+--             []
+--             [ Canvas.text
+--                 [ font { size = 48, family = "sans-serif" }, align Center ]
+--                 ( 50, 50 )
+--                 "Loading textures..."
+--             ]
+--     SetupFailed ->
+--         Canvas.toHtmlWith
+--             { width = gameWidth
+--             , height = gameHeight
+--             , textures = []
+--             }
+--             []
+--             [ Canvas.text
+--                 [ font { size = 48, family = "sans-serif" }, align Center ]
+--                 ( 50, 50 )
+--                 "Setup failed."
+--             ]
+--     SetupComplete _ ->
+--         Canvas.toHtmlWith
+--             { width = gameWidth
+--             , height = gameHeight
+--             , textures = []
+--             }
+--             []
+--             [ Canvas.text
+--                 [ font { size = 48, family = "sans-serif" }, align Center ]
+--                 ( 50, 50 )
+--                 "Sprites loaded, waiting for level..."
+--             ]
+--     MapDataLoaded _ ->
+--         Canvas.toHtmlWith
+--             { width = gameWidth
+--             , height = gameHeight
+--             , textures = []
+--             }
+--             []
+--             [ Canvas.text
+--                 [ font { size = 48, family = "sans-serif" }, align Center ]
+--                 ( 50, 50 )
+--                 "Sprites and Map JSON loaded, waiting on level image..."
+--             ]
+--     LevelLoaded { sprites, mapImage } ->
+--         case model.menuScreenStatus of
+--             NoMenuScreen ->
+--                 Canvas.toHtmlWith
+--                     { width = gameWidth
+--                     , height = gameHeight
+--                     , textures = []
+--                     }
+--                     -- [ class "block scale-[2] pixel-art" ]
+--                     [ class "block pixel-art" ]
+--                     ([ shapes
+--                         [ fill (Color.rgb 0.85 0.92 1) ]
+--                         [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+--                      ]
+--                         ++ [ Canvas.group
+--                                 [ Canvas.Settings.Advanced.transform
+--                                     [ Canvas.Settings.Advanced.translate
+--                                         (model.cameraX + 80)
+--                                         (model.cameraY + 60)
+--                                     ]
+--                                 ]
+--                                 ([]
+--                                     ++ [ Canvas.texture
+--                                             [ Canvas.Settings.Advanced.imageSmoothing False ]
+--                                             ( -model.offsetX, -model.offsetY )
+--                                             mapImage
+--                                        ]
+--                                     ++ drawWorld model.world model.cameraX model.cameraY
+--                                     ++ getCharacterFrame model sprites
+--                                     ++ drawNPCs model.npcs sprites
+--                                 )
+--                            ]
+--                         ++ showSpeaking
+--                             model.speaking
+--                             model.speechText
+--                     )
+--             CharacterConfig CharacterScreenWaiting ->
+--                 Canvas.toHtmlWith
+--                     { width = gameWidth
+--                     , height = gameHeight
+--                     , textures = []
+--                     }
+--                     [ class "block pixel-art" ]
+--                     ([ shapes
+--                         [ fill (Color.rgb 0 1 0) ]
+--                         [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+--                      ]
+--                         ++ characterConfigScreen model
+--                     )
+--             _ ->
+--                 Canvas.toHtmlWith
+--                     { width = gameWidth
+--                     , height = gameHeight
+--                     , textures = []
+--                     }
+--                     [ class "block pixel-art" ]
+--                     [ shapes
+--                         [ fill (Color.rgb 1 0 0) ]
+--                         [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+--                     ]
+-- , div [ class "flex flex-col" ]
+--     [ button [ type_ "button", onClick LoadLevel ] [ text "Open File" ]
+--     , div [] [ text ("Character X: " ++ (model.characterX |> String.fromFloat)) ]
+--     , div [] [ text ("Character Y: " ++ (model.characterY |> String.fromFloat)) ]
+--     , div [] [ text ("Camera X: " ++ (model.cameraX |> String.fromFloat)) ]
+--     , div [] [ text ("Camera Y: " ++ (model.cameraY |> String.fromFloat)) ]
+--     ]
+-- ]
 
 
 getCharacterFrame : Model -> Sprites -> List Canvas.Renderable
@@ -1674,6 +1688,91 @@ drawCell row col tileType =
             16
         ]
     ]
+
+
+characterConfigScreen : Model -> List Canvas.Renderable
+characterConfigScreen model =
+    let
+        windowWidth =
+            120.0
+
+        windowHeight =
+            40
+    in
+    [ shapes
+        [ fill (Color.rgb 0.1 0.3 0.1) ]
+        [ rect
+            ( 0, 0 )
+            gameWidthFloat
+            gameHeightFloat
+        ]
+    ]
+        ++ drawWindow
+            20
+            20
+            windowWidth
+            windowHeight
+        ++ [ text ( 26, 32 ) "Position"
+           , text ( 100, 32 ) "1F"
+           , text ( 26, 51 ) "Maximum"
+           , text ( 100, 51 ) "1F"
+           ]
+        ++ drawWindow
+            20
+            103
+            windowWidth
+            windowHeight
+        ++ [ text ( 26, 120 ) "Abil"
+           , text ( 63, 120 ) "Item"
+           , text ( 100, 120 ) "Equip"
+           , text ( 26, 138 ) "Save"
+           , textRight ( 135, 138 ) "142GP"
+           ]
+
+
+drawWindow : Float -> Float -> Float -> Float -> List Canvas.Renderable
+drawWindow x y width height =
+    [ shapes
+        [ fill (Color.rgb 1 1 1) ]
+        [ rect
+            ( x, y )
+            width
+            height
+        ]
+    , shapes
+        [ lineWidth 1
+        , lineCap RoundCap
+        , stroke (Color.rgb 0 0 0)
+        ]
+        [ path
+            ( x, y )
+            [ lineTo ( x + width, y )
+            , lineTo ( x + width, y + height )
+            , lineTo ( x, y + height )
+            , lineTo ( x, y )
+            ]
+        ]
+    ]
+
+
+text : ( Float, Float ) -> String -> Canvas.Renderable
+text xy label =
+    Canvas.text
+        [ font { size = 7, family = "FinalFantasyAdventureGB-Pixel" }
+        , align Left
+        ]
+        xy
+        label
+
+
+textRight : ( Float, Float ) -> String -> Canvas.Renderable
+textRight xy label =
+    Canvas.text
+        [ font { size = 7, family = "FinalFantasyAdventureGB-Pixel" }
+        , align Right
+        ]
+        xy
+        label
 
 
 init : () -> ( Model, Cmd Msg )
