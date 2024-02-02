@@ -7,8 +7,8 @@ console.log(
     )
     .reduce(
         (acc, i) =>
-            `${acc}Col${i} ->\n
-    ${i}\n`,
+            `${acc}${i} ->
+    Just Col${i}\n`,
         ""
     )
 )

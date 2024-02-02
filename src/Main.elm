@@ -1,4 +1,4 @@
-port module Main exposing (main)
+port module Main exposing (FacingDirection(..), getCharacterDesiredRow, main)
 
 import AStar exposing (findPath, straightLineCost)
 import Animator exposing (color)
@@ -27,6 +27,7 @@ import Set
 import Task exposing (Task)
 import Vector29
 import Vector31
+import World exposing (Col(..), Row(..), TileType(..), World, colToInt, defaultWorld, intToCol, intToRow, rowToInt)
 import Zip exposing (Zip)
 import Zip.Entry
 
@@ -62,8 +63,8 @@ type alias Model =
     , cameraY : Float
     , characterX : Float
     , characterY : Float
-    , characterRow : Int
-    , characterCol : Int
+    , characterRow : Row
+    , characterCol : Col
     , characterFacingDirection : FacingDirection
     , characterFrameTime : Int
     , characterFrame : Int
@@ -113,30 +114,10 @@ type alias Sprites =
     }
 
 
-type alias World =
-    Vector29.Vector29 (Vector31.Vector31 TileType)
-
-
-rowIndexFromVector : Int -> Maybe Vector29.Index
-rowIndexFromVector int =
-    Vector29.intToIndex int
-
-
-colIndexFromVector : Int -> Maybe Vector31.Index
-colIndexFromVector int =
-    Vector31.intToIndex int
-
-
-defaultWorld : World
-defaultWorld =
-    Vector31.initializeFromInt (\_ -> NotWalkable)
-        |> Vector29.repeat
-
-
 type alias NPC =
     { sprite : Texture
-    , row : Vector29.Index
-    , col : Vector31.Index
+    , row : Row
+    , col : Col
     , x : Float
     , y : Float
     , responses : List String
@@ -160,8 +141,8 @@ initialModel seed =
     , cameraY = 0
     , characterX = 0
     , characterY = 0
-    , characterRow = 1
-    , characterCol = 1
+    , characterRow = Row1
+    , characterCol = Col1
     , characterFacingDirection = South
     , characterFrameTime = 0
     , characterFrame = 0
@@ -276,46 +257,6 @@ toDirectionReleased string =
 keyDecoderReleased : Decode.Decoder Msg
 keyDecoderReleased =
     Decode.map toDirectionReleased (Decode.field "key" Decode.string)
-
-
-type TileType
-    = Walkable
-    | NotWalkable
-
-
-type Row
-    = Row Vector29.Index
-
-
-type Col
-    = Col Vector31.Index
-
-
-getCell : Row -> Col -> World -> TileType
-getCell (Row row) (Col col) world =
-    let
-        rowVector =
-            Vector29.get row world
-
-        tile =
-            Vector31.get col rowVector
-    in
-    tile
-
-
-setCell : Row -> Col -> TileType -> World -> World
-setCell (Row row) (Col col) newValue world =
-    let
-        rowVector =
-            Vector29.get row world
-
-        updatedColVector =
-            Vector31.set col newValue rowVector
-
-        updatedRowVector =
-            Vector29.set row updatedColVector world
-    in
-    updatedRowVector
 
 
 type Msg
@@ -738,8 +679,8 @@ update msg model =
                                         , canvasScale = jsonDoc.canvasScale
                                         , npcs =
                                             [ { sprite = mapData.sprites.mainCharacterSouth1
-                                              , row = Vector29.Index1
-                                              , col = Vector31.Index4
+                                              , row = Row4
+                                              , col = Col1
                                               , x = 0
                                               , y = 0
                                               , responses = [ "Gen-Bu has hidden the key to the door in the Statue of Hero." ]
@@ -777,49 +718,6 @@ update msg model =
 ---- Update bottom ----
 
 
-worldToString : World -> String
-worldToString world =
-    world
-        |> Vector29.toList
-        |> List.map
-            (\vector29 ->
-                vector29
-                    |> Vector31.toList
-                    |> List.map
-                        (\tile ->
-                            if tile == Walkable then
-                                0
-
-                            else
-                                1
-                        )
-            )
-        |> List.foldl
-            (\colList acc ->
-                (colList
-                    |> List.foldl
-                        (\tile innerAcc ->
-                            innerAcc ++ String.fromInt tile ++ ", "
-                        )
-                        "["
-                )
-                    ++ "],"
-                    ++ "\n"
-                    ++ acc
-            )
-            ""
-
-
-rowColTileToString : Row -> Col -> String -> String
-rowColTileToString (Row row) (Col col) tileTypeString =
-    "row: "
-        ++ String.fromInt (Vector29.indexToInt row)
-        ++ "-"
-        ++ String.fromInt (Vector31.indexToInt col)
-        ++ ":"
-        ++ tileTypeString
-
-
 jsonDecoder : Decode.Decoder JSONDecodedDocument
 jsonDecoder =
     Decode.map4 JSONDecodedDocument
@@ -837,70 +735,64 @@ type alias JSONDecodedDocument =
     }
 
 
-debugTileRowToString : Array TileType -> String
-debugTileRowToString row =
-    Array.map
-        (\tileType ->
-            if tileType == Walkable then
-                " 0 "
-
-            else
-                " 1 "
-        )
-        row
-        |> Array.foldl
-            (\rowStr tileTypeString ->
-                rowStr ++ tileTypeString
-            )
-            ""
-
-
-canMove : FacingDirection -> Int -> Int -> World -> Bool
+canMove : FacingDirection -> Row -> Col -> World -> Bool
 canMove facingDirection characterRow characterCol world =
-    let
-        desiredRow =
-            getCharacterDesiredRow facingDirection characterRow
-
-        desiredCol =
-            getCharacterDesiredCol facingDirection characterCol
-    in
-    case desiredRow |> rowIndexFromVector of
-        Nothing ->
-            False
-
-        Just rowIndex ->
-            case desiredCol |> colIndexFromVector of
-                Nothing ->
-                    False
-
-                Just colIndex ->
-                    getCell (Row rowIndex) (Col colIndex) world == Walkable
+    False
 
 
-getCharacterDesiredRow : FacingDirection -> Int -> Int
+
+-- let
+--     desiredRow =
+--         getCharacterDesiredRow facingDirection characterRow
+--     desiredCol =
+--         getCharacterDesiredCol facingDirection characterCol
+-- in
+-- case desiredRow |> rowIndexFromVector of
+--     Nothing ->
+--         False
+--     Just rowIndex ->
+--         case desiredCol |> colIndexFromVector of
+--             Nothing ->
+--                 False
+--             Just colIndex ->
+--                 getCell (Row rowIndex) (Col colIndex) world == Walkable
+
+
+getCharacterDesiredRow : FacingDirection -> Row -> Row
 getCharacterDesiredRow facingDirection characterRow =
     case facingDirection of
         North ->
-            characterRow - 1
+            characterRow
+                |> rowToInt
+                |> (\value ->
+                        value - 1
+                   )
+                |> intToRow
+                |> Maybe.withDefault characterRow
 
         South ->
-            characterRow + 1
+            characterRow
+                |> rowToInt
+                |> (\value ->
+                        value + 1
+                   )
+                |> intToRow
+                |> Maybe.withDefault characterRow
 
         _ ->
             characterRow
 
 
-getCharacterDesiredCol : FacingDirection -> Int -> Int
+getCharacterDesiredCol : FacingDirection -> Col -> Col
 getCharacterDesiredCol facingDirection characterCol =
-    case facingDirection of
-        East ->
-            characterCol + 1
-
-        West ->
-            characterCol - 1
-
-        _ ->
-            characterCol
+    --     case facingDirection of
+    --         East ->
+    --             characterCol + 1
+    --         West ->
+    --             characterCol - 1
+    --         _ ->
+    --             characterCol
+    characterCol
 
 
 updateCamera : Model -> Float -> ( Float, Float )
@@ -927,28 +819,29 @@ updateCamera model timePassed =
 
 updateCharacterXAndY : Model -> Float -> Float -> Float -> Canvas.Texture.Texture -> ( Float, Float )
 updateCharacterXAndY model timePassed cameraX cameraY characterTexture =
-    ( toFloat model.characterCol * 16 + cameraX + (Canvas.Texture.dimensions characterTexture).width / 2 - 8
-    , toFloat model.characterRow * 16 + cameraY + (Canvas.Texture.dimensions characterTexture).height / 6 - 8
+    ( toFloat (model.characterCol |> colToInt) * 16 + cameraX + (Canvas.Texture.dimensions characterTexture).width / 2 - 8
+    , toFloat (model.characterRow |> rowToInt) * 16 + cameraY + (Canvas.Texture.dimensions characterTexture).height / 6 - 8
     )
 
 
 updateCharacterXAndYNoCamera : Model -> Float -> Canvas.Texture.Texture -> ( Float, Float )
 updateCharacterXAndYNoCamera model timePassed characterTexture =
-    ( toFloat model.characterCol * 16 + (Canvas.Texture.dimensions characterTexture).width / 2 - 8
-    , toFloat model.characterRow * 16 + (Canvas.Texture.dimensions characterTexture).height / 6 - 8
+    ( toFloat (model.characterCol |> colToInt) * 16 + (Canvas.Texture.dimensions characterTexture).width / 2 - 8
+    , toFloat (model.characterRow |> rowToInt) * 16 + (Canvas.Texture.dimensions characterTexture).height / 6 - 8
     )
 
 
 updateNPCsXY : List NPC -> List NPC
 updateNPCsXY npcs =
-    List.map
-        (\npc ->
-            { npc
-                | x = toFloat (Vector29.indexToInt npc.row) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
-                , y = toFloat (Vector31.indexToInt npc.col) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
-            }
-        )
-        npcs
+    -- List.map
+    --     (\npc ->
+    --         { npc
+    --             | x = toFloat (Vector29.indexToInt npc.row) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
+    --             , y = toFloat (Vector31.indexToInt npc.col) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
+    --         }
+    --     )
+    --     npcs
+    npcs
 
 
 updateCharacterFrameTime : Int -> Int -> ( Int, Int )
@@ -1054,48 +947,44 @@ decodeBoundingRect =
 
 getTargetNPCCharacterIsFacing : Model -> Maybe NPC
 getTargetNPCCharacterIsFacing model =
-    let
-        ( targetRow, targetCol ) =
-            getCharacterFacingTargetXY
-                model.characterRow
-                model.characterCol
-                model.characterFacingDirection
-
-        match =
-            List.filter
-                (\npcItem ->
-                    let
-                        _ =
-                            Debug.log "npc" ( Vector29.indexToInt npcItem.row, Vector31.indexToInt npcItem.col )
-                    in
-                    targetRow == Vector29.indexToInt npcItem.row && targetCol == Vector31.indexToInt npcItem.col
-                )
-                model.npcs
-                |> List.head
-
-        _ =
-            Debug.log "char: " ( model.characterRow, model.characterCol )
-
-        _ =
-            Debug.log "target: " ( targetRow, targetCol )
-    in
-    match
+    -- let
+    --     ( targetRow, targetCol ) =
+    --         getCharacterFacingTargetXY
+    --             model.characterRow
+    --             model.characterCol
+    --             model.characterFacingDirection
+    --     match =
+    --         List.filter
+    --             (\npcItem ->
+    --                 let
+    --                     _ =
+    --                         Debug.log "npc" ( Vector29.indexToInt npcItem.row, Vector31.indexToInt npcItem.col )
+    --                 in
+    --                 targetRow == Vector29.indexToInt npcItem.row && targetCol == Vector31.indexToInt npcItem.col
+    --             )
+    --             model.npcs
+    --             |> List.head
+    --     _ =
+    --         Debug.log "char: " ( model.characterRow, model.characterCol )
+    --     _ =
+    --         Debug.log "target: " ( targetRow, targetCol )
+    -- in
+    -- match
+    Nothing
 
 
-getCharacterFacingTargetXY : Int -> Int -> FacingDirection -> ( Int, Int )
+getCharacterFacingTargetXY : Row -> Col -> FacingDirection -> ( Row, Col )
 getCharacterFacingTargetXY row col facingDirection =
-    case facingDirection of
-        North ->
-            ( row - 1, col )
-
-        South ->
-            ( row + 1, col )
-
-        East ->
-            ( row, col + 1 )
-
-        West ->
-            ( row, col - 1 )
+    -- case facingDirection of
+    --     North ->
+    --         ( row - 1, col )
+    --     South ->
+    --         ( row + 1, col )
+    --     East ->
+    --         ( row, col + 1 )
+    --     West ->
+    --         ( row, col - 1 )
+    ( row, col )
 
 
 view : Model -> Html Msg
@@ -1492,44 +1381,49 @@ drawWorld world cameraX cameraY =
              --   Canvas.Settings.Advanced.translate cameraX cameraY
             ]
         ]
-        (Vector29.indexedMap
-            (\rowIndex row ->
-                Vector31.indexedMap
-                    (\colIndex cell ->
-                        drawCell (Row rowIndex) (Col colIndex) cell
-                    )
-                    row
-                    |> Vector31.toList
-                    |> List.concatMap
-                        (\cell -> cell)
-            )
-            world
-            |> Vector29.toList
-            |> List.concatMap
-                (\cell -> cell)
-        )
+        -- (Vector29.indexedMap
+        --     (\rowIndex row ->
+        --         Vector31.indexedMap
+        --             (\colIndex cell ->
+        --                 drawCell rowIndex colIndex cell
+        --             )
+        --             row
+        --             |> Vector31.toList
+        --             |> List.concatMap
+        --                 (\cell -> cell)
+        --     )
+        --     world
+        --     |> Vector29.toList
+        --     |> List.concatMap
+        --         (\cell -> cell)
+        -- )
+        []
     ]
 
 
 drawCell : Row -> Col -> TileType -> List Canvas.Renderable
-drawCell (Row row) (Col col) tileType =
-    let
-        rowInt =
-            Vector29.indexToInt row
-
-        colInt =
-            Vector31.indexToInt col
-    in
-    [ shapes
-        [ if tileType == Walkable then
-            CanvasSettings.fill Color.green
-
-          else
-            CanvasSettings.fill Color.red
-        ]
-        [ rect ( Basics.toFloat colInt * 16, Basics.toFloat rowInt * 16 ) 16 16 ]
-    , shapes [ CanvasSettings.stroke Color.lightGreen ] [ rect ( Basics.toFloat colInt * 16, Basics.toFloat rowInt * 16 ) 16 16 ]
-    ]
+drawCell row col tileType =
+    -- let
+    --     rowInt =
+    --         Vector29.indexToInt row
+    --     colInt =
+    --         Vector31.indexToInt col
+    -- in
+    -- [ shapes
+    --     [ if tileType == Walkable then
+    --         CanvasSettings.fill Color.green
+    --       else
+    --         CanvasSettings.fill Color.red
+    --     ]
+    --     [ rect ( Basics.toFloat colInt * 16, Basics.toFloat rowInt * 16 ) 16 16 ]
+    -- , shapes
+    --     [ CanvasSettings.stroke Color.lightGreen ]
+    --     [ rect
+    --     ( Basics.toFloat colInt * 16
+    --     , Basics.toFloat rowInt * 16 )
+    --     16 16 ]
+    -- ]
+    []
 
 
 init : () -> ( Model, Cmd Msg )

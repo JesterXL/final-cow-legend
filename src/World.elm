@@ -1,4 +1,4 @@
-module World exposing (Col(..), Row(..), TileType(..), colToInt, defaultWorld, getCell, rowToInt, setCell)
+module World exposing (Col(..), Row(..), TileType(..), World, colToInt, defaultWorld, getCell, intToCol, intToRow, rowToInt, setCell)
 
 import Vector29
 import Vector31
@@ -498,3 +498,197 @@ colToInt col =
 
         Col30 ->
             30
+
+
+intToRow : Int -> Maybe Row
+intToRow value =
+    case value of
+        0 ->
+            Just Row0
+
+        1 ->
+            Just Row1
+
+        2 ->
+            Just Row2
+
+        3 ->
+            Just Row3
+
+        4 ->
+            Just Row4
+
+        5 ->
+            Just Row5
+
+        6 ->
+            Just Row6
+
+        7 ->
+            Just Row7
+
+        8 ->
+            Just Row8
+
+        9 ->
+            Just Row9
+
+        10 ->
+            Just Row10
+
+        11 ->
+            Just Row11
+
+        12 ->
+            Just Row12
+
+        13 ->
+            Just Row13
+
+        14 ->
+            Just Row14
+
+        15 ->
+            Just Row15
+
+        16 ->
+            Just Row16
+
+        17 ->
+            Just Row17
+
+        18 ->
+            Just Row18
+
+        19 ->
+            Just Row19
+
+        20 ->
+            Just Row20
+
+        21 ->
+            Just Row21
+
+        22 ->
+            Just Row22
+
+        23 ->
+            Just Row23
+
+        24 ->
+            Just Row24
+
+        25 ->
+            Just Row25
+
+        26 ->
+            Just Row26
+
+        27 ->
+            Just Row27
+
+        28 ->
+            Just Row28
+
+        _ ->
+            Nothing
+
+
+intToCol : Int -> Maybe Col
+intToCol value =
+    case value of
+        0 ->
+            Just Col0
+
+        1 ->
+            Just Col1
+
+        2 ->
+            Just Col2
+
+        3 ->
+            Just Col3
+
+        4 ->
+            Just Col4
+
+        5 ->
+            Just Col5
+
+        6 ->
+            Just Col6
+
+        7 ->
+            Just Col7
+
+        8 ->
+            Just Col8
+
+        9 ->
+            Just Col9
+
+        10 ->
+            Just Col10
+
+        11 ->
+            Just Col11
+
+        12 ->
+            Just Col12
+
+        13 ->
+            Just Col13
+
+        14 ->
+            Just Col14
+
+        15 ->
+            Just Col15
+
+        16 ->
+            Just Col16
+
+        17 ->
+            Just Col17
+
+        18 ->
+            Just Col18
+
+        19 ->
+            Just Col19
+
+        20 ->
+            Just Col20
+
+        21 ->
+            Just Col21
+
+        22 ->
+            Just Col22
+
+        23 ->
+            Just Col23
+
+        24 ->
+            Just Col24
+
+        25 ->
+            Just Col25
+
+        26 ->
+            Just Col26
+
+        27 ->
+            Just Col27
+
+        28 ->
+            Just Col28
+
+        29 ->
+            Just Col29
+
+        30 ->
+            Just Col30
+
+        _ ->
+            Nothing
