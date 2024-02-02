@@ -1,4 +1,4 @@
-port module Main exposing (FacingDirection(..), getCharacterDesiredRow, main)
+port module Main exposing (FacingDirection(..), getCharacterDesiredCol, getCharacterDesiredRow, main)
 
 import AStar exposing (findPath, straightLineCost)
 import Animator exposing (color)
@@ -785,14 +785,27 @@ getCharacterDesiredRow facingDirection characterRow =
 
 getCharacterDesiredCol : FacingDirection -> Col -> Col
 getCharacterDesiredCol facingDirection characterCol =
-    --     case facingDirection of
-    --         East ->
-    --             characterCol + 1
-    --         West ->
-    --             characterCol - 1
-    --         _ ->
-    --             characterCol
-    characterCol
+    case facingDirection of
+        East ->
+            characterCol
+                |> colToInt
+                |> (\value ->
+                        value + 1
+                   )
+                |> intToCol
+                |> Maybe.withDefault characterCol
+
+        West ->
+            characterCol
+                |> colToInt
+                |> (\value ->
+                        value - 1
+                   )
+                |> intToCol
+                |> Maybe.withDefault characterCol
+
+        _ ->
+            characterCol
 
 
 updateCamera : Model -> Float -> ( Float, Float )

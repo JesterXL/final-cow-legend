@@ -2,9 +2,9 @@ module MainTest exposing (..)
 
 import Expect
 import Fuzz exposing (..)
-import Main exposing (FacingDirection(..), getCharacterDesiredRow)
+import Main exposing (FacingDirection(..), getCharacterDesiredCol, getCharacterDesiredRow)
 import Test exposing (..)
-import World exposing (Row(..))
+import World exposing (Col(..), Row(..))
 
 
 suite : Test
@@ -23,5 +23,19 @@ suite =
             , test "should give you same row if you can't go farther south" <|
                 \_ ->
                     Expect.equal (getCharacterDesiredRow South Row28) Row28
+            ]
+        , describe "getCharacterDesiredCol"
+            [ test "should increment east" <|
+                \_ ->
+                    Expect.equal (getCharacterDesiredCol East Col0) Col1
+            , test "should increment west" <|
+                \_ ->
+                    Expect.equal (getCharacterDesiredCol West Col1) Col0
+            , test "should give you same row if you can't go farther west" <|
+                \_ ->
+                    Expect.equal (getCharacterDesiredCol West Col0) Col0
+            , test "should give you same row if you can't go farther east" <|
+                \_ ->
+                    Expect.equal (getCharacterDesiredCol East Col30) Col30
             ]
         ]
