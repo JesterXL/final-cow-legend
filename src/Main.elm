@@ -27,7 +27,7 @@ import Set
 import Task exposing (Task)
 import Vector29
 import Vector31
-import World exposing (Col(..), Row(..), TileType(..), World, colToInt, defaultWorld, intToCol, intToRow, rowToInt)
+import World exposing (Col(..), Row(..), TileType(..), World, colToInt, defaultWorld, getCell, intToCol, intToRow, rowToInt)
 import Zip exposing (Zip)
 import Zip.Entry
 
@@ -483,6 +483,7 @@ update msg model =
                     let
                         desiredRow =
                             getCharacterDesiredRow North model.characterRow
+                                |> Maybe.withDefault model.characterRow
                     in
                     if canMove North model.characterRow model.characterCol model.world == True then
                         ( { model | characterRow = desiredRow, characterFacingDirection = North }, Cmd.none )
@@ -497,6 +498,7 @@ update msg model =
                     let
                         desiredCol =
                             getCharacterDesiredCol West model.characterCol
+                                |> Maybe.withDefault model.characterCol
                     in
                     if canMove West model.characterRow model.characterCol model.world == True then
                         ( { model | characterCol = desiredCol, characterFacingDirection = West }, Cmd.none )
@@ -511,6 +513,7 @@ update msg model =
                     let
                         desiredRow =
                             getCharacterDesiredRow South model.characterRow
+                                |> Maybe.withDefault model.characterRow
                     in
                     if canMove South model.characterRow model.characterCol model.world == True then
                         ( { model | characterRow = desiredRow, characterFacingDirection = South }, Cmd.none )
@@ -525,6 +528,7 @@ update msg model =
                     let
                         desiredCol =
                             getCharacterDesiredCol East model.characterCol
+                                |> Maybe.withDefault model.characterCol
                     in
                     if canMove East model.characterRow model.characterCol model.world == True then
                         ( { model | characterCol = desiredCol, characterFacingDirection = East }, Cmd.none )
@@ -737,28 +741,27 @@ type alias JSONDecodedDocument =
 
 canMove : FacingDirection -> Row -> Col -> World -> Bool
 canMove facingDirection characterRow characterCol world =
-    False
+    let
+        desiredRow =
+            getCharacterDesiredRow facingDirection characterRow
+
+        desiredCol =
+            getCharacterDesiredCol facingDirection characterCol
+    in
+    case desiredRow of
+        Nothing ->
+            False
+
+        Just rowIndex ->
+            case desiredCol of
+                Nothing ->
+                    False
+
+                Just colIndex ->
+                    getCell rowIndex colIndex world == Walkable
 
 
-
--- let
---     desiredRow =
---         getCharacterDesiredRow facingDirection characterRow
---     desiredCol =
---         getCharacterDesiredCol facingDirection characterCol
--- in
--- case desiredRow |> rowIndexFromVector of
---     Nothing ->
---         False
---     Just rowIndex ->
---         case desiredCol |> colIndexFromVector of
---             Nothing ->
---                 False
---             Just colIndex ->
---                 getCell (Row rowIndex) (Col colIndex) world == Walkable
-
-
-getCharacterDesiredRow : FacingDirection -> Row -> Row
+getCharacterDesiredRow : FacingDirection -> Row -> Maybe Row
 getCharacterDesiredRow facingDirection characterRow =
     case facingDirection of
         North ->
@@ -768,7 +771,6 @@ getCharacterDesiredRow facingDirection characterRow =
                         value - 1
                    )
                 |> intToRow
-                |> Maybe.withDefault characterRow
 
         South ->
             characterRow
@@ -777,13 +779,12 @@ getCharacterDesiredRow facingDirection characterRow =
                         value + 1
                    )
                 |> intToRow
-                |> Maybe.withDefault characterRow
 
         _ ->
-            characterRow
+            Nothing
 
 
-getCharacterDesiredCol : FacingDirection -> Col -> Col
+getCharacterDesiredCol : FacingDirection -> Col -> Maybe Col
 getCharacterDesiredCol facingDirection characterCol =
     case facingDirection of
         East ->
@@ -793,7 +794,6 @@ getCharacterDesiredCol facingDirection characterCol =
                         value + 1
                    )
                 |> intToCol
-                |> Maybe.withDefault characterCol
 
         West ->
             characterCol
@@ -802,10 +802,9 @@ getCharacterDesiredCol facingDirection characterCol =
                         value - 1
                    )
                 |> intToCol
-                |> Maybe.withDefault characterCol
 
         _ ->
-            characterCol
+            Nothing
 
 
 updateCamera : Model -> Float -> ( Float, Float )
@@ -846,15 +845,14 @@ updateCharacterXAndYNoCamera model timePassed characterTexture =
 
 updateNPCsXY : List NPC -> List NPC
 updateNPCsXY npcs =
-    -- List.map
-    --     (\npc ->
-    --         { npc
-    --             | x = toFloat (Vector29.indexToInt npc.row) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
-    --             , y = toFloat (Vector31.indexToInt npc.col) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
-    --         }
-    --     )
-    --     npcs
-    npcs
+    List.map
+        (\npc ->
+            { npc
+                | x = toFloat (npc.col |> colToInt) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
+                , y = toFloat (npc.row |> rowToInt) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
+            }
+        )
+        npcs
 
 
 updateCharacterFrameTime : Int -> Int -> ( Int, Int )
@@ -960,44 +958,32 @@ decodeBoundingRect =
 
 getTargetNPCCharacterIsFacing : Model -> Maybe NPC
 getTargetNPCCharacterIsFacing model =
-    -- let
-    --     ( targetRow, targetCol ) =
-    --         getCharacterFacingTargetXY
-    --             model.characterRow
-    --             model.characterCol
-    --             model.characterFacingDirection
-    --     match =
-    --         List.filter
-    --             (\npcItem ->
-    --                 let
-    --                     _ =
-    --                         Debug.log "npc" ( Vector29.indexToInt npcItem.row, Vector31.indexToInt npcItem.col )
-    --                 in
-    --                 targetRow == Vector29.indexToInt npcItem.row && targetCol == Vector31.indexToInt npcItem.col
-    --             )
-    --             model.npcs
-    --             |> List.head
-    --     _ =
-    --         Debug.log "char: " ( model.characterRow, model.characterCol )
-    --     _ =
-    --         Debug.log "target: " ( targetRow, targetCol )
-    -- in
-    -- match
-    Nothing
+    getCharacterFacingTargetXY
+        model.characterRow
+        model.characterCol
+        model.characterFacingDirection
+        |> Maybe.andThen
+            (\( targetRow, targetCol ) ->
+                List.filter
+                    (\npcItem ->
+                        npcItem.row == targetRow && npcItem.col == targetCol
+                    )
+                    model.npcs
+                    |> List.head
+            )
 
 
-getCharacterFacingTargetXY : Row -> Col -> FacingDirection -> ( Row, Col )
+getCharacterFacingTargetXY : Row -> Col -> FacingDirection -> Maybe ( Row, Col )
 getCharacterFacingTargetXY row col facingDirection =
-    -- case facingDirection of
-    --     North ->
-    --         ( row - 1, col )
-    --     South ->
-    --         ( row + 1, col )
-    --     East ->
-    --         ( row, col + 1 )
-    --     West ->
-    --         ( row, col - 1 )
-    ( row, col )
+    getCharacterDesiredRow facingDirection row
+        |> Maybe.andThen
+            (\targetRow ->
+                getCharacterDesiredCol facingDirection col
+                    |> Maybe.andThen
+                        (\targetCol ->
+                            Just ( targetRow, targetCol )
+                        )
+            )
 
 
 view : Model -> Html Msg
