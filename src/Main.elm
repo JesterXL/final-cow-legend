@@ -13,7 +13,7 @@ import Canvas.Settings as CanvasSettings exposing (fill, stroke)
 import Canvas.Settings.Advanced
 import Canvas.Settings.Line exposing (LineCap(..), LineJoin(..), lineCap, lineJoin, lineWidth)
 import Canvas.Settings.Text exposing (TextAlign(..), align, font, maxWidth)
-import Canvas.Texture exposing (Texture, sprite)
+import Canvas.Texture as Texture exposing (Texture, sprite)
 import Color
 import File exposing (File)
 import File.Select as Select
@@ -31,6 +31,44 @@ import Vector31
 import World exposing (Col(..), Row(..), TileType(..), World, colToIndex, colToInt, defaultWorld, getCell, indexToCol, indexToRow, intToCol, intToRow, rowToIndex, rowToInt)
 import Zip exposing (Zip)
 import Zip.Entry
+
+
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( initialModel (Random.initialSeed 42), Cmd.none )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    if model.paused == False then
+        Sub.batch
+            [ onVisibilityChange VisibilityChange
+            , onAnimationFrameDelta Frame
+            , onKeyDown keyDecoderPressed
+            , onKeyUp keyDecoderReleased
+            , onImageFromJavaScript ImageLoadedFromJavaScript
+            , onCanvasBoundingRect CanvasBoundingRectLoaded
+            ]
+
+    else if model.paused == False && model.speaking == True then
+        Sub.batch
+            [ onVisibilityChange VisibilityChange
+            , onKeyDown keyDecoderPressed
+            , onKeyUp keyDecoderReleased
+            ]
+
+    else
+        onVisibilityChange VisibilityChange
+
+
+main : Program () Model Msg
+main =
+    Browser.element
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }
 
 
 
@@ -104,16 +142,16 @@ type GameSetupStatus
 
 
 type alias Sprites =
-    { cursor : Canvas.Texture.Texture
-    , towerBase : Canvas.Texture.Texture
-    , mainCharacterSouth1 : Canvas.Texture.Texture
-    , mainCharacterSouth2 : Canvas.Texture.Texture
-    , mainCharacterNorth1 : Canvas.Texture.Texture
-    , mainCharacterNorth2 : Canvas.Texture.Texture
-    , mainCharacterWest1 : Canvas.Texture.Texture
-    , mainCharacterWest2 : Canvas.Texture.Texture
-    , mainCharacterEast1 : Canvas.Texture.Texture
-    , mainCharacterEast2 : Canvas.Texture.Texture
+    { cursor : Texture
+    , towerBase : Texture
+    , mainCharacterSouth1 : Texture
+    , mainCharacterSouth2 : Texture
+    , mainCharacterNorth1 : Texture
+    , mainCharacterNorth2 : Texture
+    , mainCharacterWest1 : Texture
+    , mainCharacterWest2 : Texture
+    , mainCharacterEast1 : Texture
+    , mainCharacterEast2 : Texture
     }
 
 
@@ -165,7 +203,7 @@ type ItemType
 
 
 type CharacterScreenStatus
-    = CharacterScreenWaiting
+    = CharacterScreenWaiting String
     | CharacterScreenAbilities
     | CharacterScreenItems
     | CharacterScreenEquip EquipScreen
@@ -370,7 +408,7 @@ keyDecoderReleased =
 type Msg
     = TogglePause
     | Frame Float
-    | TextureLoaded (Maybe Canvas.Texture.Texture)
+    | TextureLoaded (Maybe Texture)
     | MoveCursor Direction
     | VisibilityChange Visibility
     | LoadLevel
@@ -437,15 +475,15 @@ update msg model =
                 | gameSetupStatus =
                     SetupComplete
                         { cursor =
-                            Canvas.Texture.sprite
-                                { x = 68
-                                , y = 217
-                                , width = 32
-                                , height = 32
+                            Texture.sprite
+                                { x = 571
+                                , y = 1004
+                                , width = 16
+                                , height = 15
                                 }
                                 texture
                         , towerBase =
-                            Canvas.Texture.sprite
+                            Texture.sprite
                                 { x = 5
                                 , y = 5
                                 , width = 608
@@ -453,7 +491,7 @@ update msg model =
                                 }
                                 texture
                         , mainCharacterSouth1 =
-                            Canvas.Texture.sprite
+                            Texture.sprite
                                 { x = 1
                                 , y = 903
                                 , width = 16
@@ -461,7 +499,7 @@ update msg model =
                                 }
                                 texture
                         , mainCharacterSouth2 =
-                            Canvas.Texture.sprite
+                            Texture.sprite
                                 { x = 1
                                 , y = 1022
                                 , width = 16
@@ -469,7 +507,7 @@ update msg model =
                                 }
                                 texture
                         , mainCharacterNorth1 =
-                            Canvas.Texture.sprite
+                            Texture.sprite
                                 { x = 26
                                 , y = 903
                                 , width = 16
@@ -477,7 +515,7 @@ update msg model =
                                 }
                                 texture
                         , mainCharacterNorth2 =
-                            Canvas.Texture.sprite
+                            Texture.sprite
                                 { x = 25
                                 , y = 1022
                                 , width = 16
@@ -485,7 +523,7 @@ update msg model =
                                 }
                                 texture
                         , mainCharacterWest1 =
-                            Canvas.Texture.sprite
+                            Texture.sprite
                                 { x = 50
                                 , y = 903
                                 , width = 16
@@ -493,7 +531,7 @@ update msg model =
                                 }
                                 texture
                         , mainCharacterWest2 =
-                            Canvas.Texture.sprite
+                            Texture.sprite
                                 { x = 74
                                 , y = 1021
                                 , width = 16
@@ -501,7 +539,7 @@ update msg model =
                                 }
                                 texture
                         , mainCharacterEast1 =
-                            Canvas.Texture.sprite
+                            Texture.sprite
                                 { x = 74
                                 , y = 903
                                 , width = 16
@@ -509,7 +547,7 @@ update msg model =
                                 }
                                 texture
                         , mainCharacterEast2 =
-                            Canvas.Texture.sprite
+                            Texture.sprite
                                 { x = 50
                                 , y = 1022
                                 , width = 16
@@ -530,7 +568,7 @@ update msg model =
                     ( { model | leftPressed = False }, Cmd.none )
 
                 RightPressed ->
-                    ( { model | rightPressed = True }, Cmd.none )
+                    ( updateCursorSelected RightPressed model, Cmd.none )
 
                 RightReleased ->
                     ( { model | rightPressed = False }, Cmd.none )
@@ -609,18 +647,24 @@ update msg model =
                     ( model, Cmd.none )
 
                 BButtonPressed ->
-                    if model.menuScreenStatus == CharacterConfig CharacterScreenWaiting then
-                        ( { model | menuScreenStatus = NoMenuScreen }, Cmd.none )
+                    case model.menuScreenStatus of
+                        CharacterConfig status ->
+                            case status of
+                                CharacterScreenWaiting _ ->
+                                    ( { model | menuScreenStatus = NoMenuScreen }, Cmd.none )
 
-                    else
-                        ( model, Cmd.none )
+                                _ ->
+                                    ( model, Cmd.none )
+
+                        _ ->
+                            ( model, Cmd.none )
 
                 BButtonReleased ->
                     ( model, Cmd.none )
 
                 StartPressed ->
                     if model.menuScreenStatus == NoMenuScreen then
-                        ( { model | menuScreenStatus = CharacterConfig CharacterScreenWaiting }, Cmd.none )
+                        ( { model | menuScreenStatus = CharacterConfig (CharacterScreenWaiting "Abil") }, Cmd.none )
 
                     else
                         ( model, Cmd.none )
@@ -779,17 +823,17 @@ update msg model =
                                                     ( model, Cmd.none )
 
         ImageLoadedFromJavaScript image ->
-            case Canvas.Texture.fromDomImage image of
+            case Texture.fromDomImage image of
                 Nothing ->
                     ( model, Cmd.none )
 
                 Just texture ->
                     let
                         { width, height } =
-                            Canvas.Texture.dimensions texture
+                            Texture.dimensions texture
 
                         sprite =
-                            Canvas.Texture.sprite
+                            Texture.sprite
                                 { x = 0
                                 , y = 0
                                 , width = width
@@ -1021,17 +1065,17 @@ updateCamera model timePassed =
         ( model.cameraX, model.cameraY )
 
 
-updateCharacterXAndY : Model -> Float -> Float -> Float -> Canvas.Texture.Texture -> ( Float, Float )
+updateCharacterXAndY : Model -> Float -> Float -> Float -> Texture -> ( Float, Float )
 updateCharacterXAndY model timePassed cameraX cameraY characterTexture =
-    ( toFloat (model.characterCol |> colToInt) * 16 + cameraX + (Canvas.Texture.dimensions characterTexture).width / 2 - 8
-    , toFloat (model.characterRow |> rowToInt) * 16 + cameraY + (Canvas.Texture.dimensions characterTexture).height / 6 - 8
+    ( toFloat (model.characterCol |> colToInt) * 16 + cameraX + (Texture.dimensions characterTexture).width / 2 - 8
+    , toFloat (model.characterRow |> rowToInt) * 16 + cameraY + (Texture.dimensions characterTexture).height / 6 - 8
     )
 
 
-updateCharacterXAndYNoCamera : Model -> Float -> Canvas.Texture.Texture -> ( Float, Float )
+updateCharacterXAndYNoCamera : Model -> Float -> Texture -> ( Float, Float )
 updateCharacterXAndYNoCamera model timePassed characterTexture =
-    ( toFloat (model.characterCol |> colToInt) * 16 + (Canvas.Texture.dimensions characterTexture).width / 2 - 8
-    , toFloat (model.characterRow |> rowToInt) * 16 + (Canvas.Texture.dimensions characterTexture).height / 6 - 8
+    ( toFloat (model.characterCol |> colToInt) * 16 + (Texture.dimensions characterTexture).width / 2 - 8
+    , toFloat (model.characterRow |> rowToInt) * 16 + (Texture.dimensions characterTexture).height / 6 - 8
     )
 
 
@@ -1040,8 +1084,8 @@ updateNPCsXY npcs =
     Array.map
         (\npc ->
             { npc
-                | x = toFloat (npc.col |> colToInt) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
-                , y = toFloat (npc.row |> rowToInt) * 16 + (Canvas.Texture.dimensions npc.sprite).width / 2 - 8
+                | x = toFloat (npc.col |> colToInt) * 16 + (Texture.dimensions npc.sprite).width / 2 - 8
+                , y = toFloat (npc.row |> rowToInt) * 16 + (Texture.dimensions npc.sprite).width / 2 - 8
             }
         )
         npcs
@@ -1230,14 +1274,19 @@ view model =
         [ Canvas.toHtmlWith
             { width = gameWidth
             , height = gameHeight
-            , textures = []
+            , textures = [ Texture.loadFromImageUrl "FFL-TowerBase.png" TextureLoaded ]
             }
             [ class "block pixel-art" ]
-            ([ shapes
-                [ fill (Color.rgb 0 1 0) ]
-                [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
-             ]
-                ++ characterConfigScreen model
+            (case model.gameSetupStatus of
+                SetupComplete sprites ->
+                    [ shapes
+                        [ fill (Color.rgb 0 1 0) ]
+                        [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
+                    ]
+                        ++ characterConfigScreen model sprites
+
+                _ ->
+                    []
             )
         ]
 
@@ -1457,9 +1506,6 @@ drawSpeaking speech =
         margin =
             6
 
-        fontSize =
-            8
-
         startY =
             gameHeightFloat / 2 + margin
 
@@ -1471,7 +1517,7 @@ drawSpeaking speech =
                             [ font { size = fontSize, family = "FinalFantasyAdventureGB-Pixel" }
                             , align Left
                             ]
-                            ( 9, fontSize * (toFloat index + 1) + (fontSize * toFloat index) + startY + margin )
+                            ( 9, fontSizeFloat * (toFloat index + 1) + (fontSizeFloat * toFloat index) + startY + margin )
                             (String.trim str)
                     )
 
@@ -1606,6 +1652,26 @@ gameHeightFloat =
     toFloat gameHeight
 
 
+fontSize : Int
+fontSize =
+    7
+
+
+fontSizeFloat : Float
+fontSizeFloat =
+    toFloat fontSize
+
+
+cursorWidth : Float
+cursorWidth =
+    16
+
+
+cursorHeight : Float
+cursorHeight =
+    15
+
+
 pauseButton : Bool -> Html Msg
 pauseButton paused =
     if paused == True then
@@ -1690,14 +1756,56 @@ drawCell row col tileType =
     ]
 
 
-characterConfigScreen : Model -> List Canvas.Renderable
-characterConfigScreen model =
+characterConfigScreen : Model -> Sprites -> List Canvas.Renderable
+characterConfigScreen model sprites =
     let
         windowWidth =
             120.0
 
         windowHeight =
             40
+
+        zeroXY =
+            ( 0, 0 )
+
+        abilXY =
+            ( 26, 120 )
+
+        itemXY =
+            ( 63, 120 )
+
+        equipXY =
+            ( 100, 120 )
+
+        saveXY =
+            ( 26, 138 )
+
+        cursorPosition =
+            case model.menuScreenStatus of
+                CharacterConfig status ->
+                    case status of
+                        CharacterScreenWaiting labelTarget ->
+                            case labelTarget of
+                                "Abil" ->
+                                    abilXY
+
+                                "Item" ->
+                                    itemXY
+
+                                "Equip" ->
+                                    equipXY
+
+                                "Save" ->
+                                    saveXY
+
+                                _ ->
+                                    zeroXY
+
+                        _ ->
+                            zeroXY
+
+                _ ->
+                    zeroXY
     in
     [ shapes
         [ fill (Color.rgb 0.1 0.3 0.1) ]
@@ -1722,12 +1830,84 @@ characterConfigScreen model =
             103
             windowWidth
             windowHeight
-        ++ [ text ( 26, 120 ) "Abil"
-           , text ( 63, 120 ) "Item"
-           , text ( 100, 120 ) "Equip"
-           , text ( 26, 138 ) "Save"
+        ++ [ text abilXY "Abil"
+           , text itemXY "Item"
+           , text equipXY "Equip"
+           , text saveXY "Save"
            , textRight ( 135, 138 ) "142GP"
            ]
+        ++ [ cursor
+                sprites.cursor
+                ( Tuple.first cursorPosition - cursorWidth - 1
+                , Tuple.second cursorPosition - (cursorHeight / 2)
+                )
+           ]
+
+
+characterConfigScreenCursorMoved : Direction -> String -> String
+characterConfigScreenCursorMoved direction selectedNow =
+    case direction of
+        RightPressed ->
+            case selectedNow of
+                "Abil" ->
+                    "Item"
+
+                "Item" ->
+                    "Equip"
+
+                _ ->
+                    selectedNow
+
+        LeftPressed ->
+            case selectedNow of
+                "Item" ->
+                    "Abil"
+
+                "Equip" ->
+                    "Item"
+
+                _ ->
+                    selectedNow
+
+        DownPressed ->
+            case selectedNow of
+                "Abil" ->
+                    "Save"
+
+                _ ->
+                    selectedNow
+
+        UpPressed ->
+            case selectedNow of
+                "Save" ->
+                    "Abil"
+
+                _ ->
+                    selectedNow
+
+        _ ->
+            selectedNow
+
+
+updateCursorSelected : Direction -> Model -> Model
+updateCursorSelected direction model =
+    case model.menuScreenStatus of
+        CharacterConfig status ->
+            case status of
+                CharacterScreenWaiting item ->
+                    { model
+                        | menuScreenStatus =
+                            CharacterConfig
+                                (CharacterScreenWaiting
+                                    (characterConfigScreenCursorMoved direction item)
+                                )
+                    }
+
+                _ ->
+                    model
+
+        _ ->
+            model
 
 
 drawWindow : Float -> Float -> Float -> Float -> List Canvas.Renderable
@@ -1775,39 +1955,9 @@ textRight xy label =
         label
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( initialModel (Random.initialSeed 42), Cmd.none )
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    if model.paused == False then
-        Sub.batch
-            [ onVisibilityChange VisibilityChange
-            , onAnimationFrameDelta Frame
-            , onKeyDown keyDecoderPressed
-            , onKeyUp keyDecoderReleased
-            , onImageFromJavaScript ImageLoadedFromJavaScript
-            , onCanvasBoundingRect CanvasBoundingRectLoaded
-            ]
-
-    else if model.paused == False && model.speaking == True then
-        Sub.batch
-            [ onVisibilityChange VisibilityChange
-            , onKeyDown keyDecoderPressed
-            , onKeyUp keyDecoderReleased
-            ]
-
-    else
-        onVisibilityChange VisibilityChange
-
-
-main : Program () Model Msg
-main =
-    Browser.element
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        }
+cursor : Texture -> ( Float, Float ) -> Canvas.Renderable
+cursor cursorTexture xy =
+    Canvas.texture
+        [ Canvas.Settings.Advanced.imageSmoothing False ]
+        xy
+        cursorTexture
