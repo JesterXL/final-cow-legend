@@ -562,25 +562,45 @@ update msg model =
         MoveCursor direction ->
             case direction of
                 LeftPressed ->
-                    ( { model | leftPressed = True }, Cmd.none )
+                    ( { model
+                        | leftPressed = True
+                        , menuScreenStatus = updateCursorSelected LeftPressed model.menuScreenStatus
+                      }
+                    , Cmd.none
+                    )
 
                 LeftReleased ->
                     ( { model | leftPressed = False }, Cmd.none )
 
                 RightPressed ->
-                    ( updateCursorSelected RightPressed model, Cmd.none )
+                    ( { model
+                        | rightPressed = True
+                        , menuScreenStatus = updateCursorSelected RightPressed model.menuScreenStatus
+                      }
+                    , Cmd.none
+                    )
 
                 RightReleased ->
                     ( { model | rightPressed = False }, Cmd.none )
 
                 UpPressed ->
-                    ( { model | upPressed = True }, Cmd.none )
+                    ( { model
+                        | upPressed = True
+                        , menuScreenStatus = updateCursorSelected UpPressed model.menuScreenStatus
+                      }
+                    , Cmd.none
+                    )
 
                 UpReleased ->
                     ( { model | upPressed = False }, Cmd.none )
 
                 DownPressed ->
-                    ( { model | downPressed = True }, Cmd.none )
+                    ( { model
+                        | downPressed = True
+                        , menuScreenStatus = updateCursorSelected DownPressed model.menuScreenStatus
+                      }
+                    , Cmd.none
+                    )
 
                 DownReleased ->
                     ( { model | downPressed = False }, Cmd.none )
@@ -1889,25 +1909,22 @@ characterConfigScreenCursorMoved direction selectedNow =
             selectedNow
 
 
-updateCursorSelected : Direction -> Model -> Model
-updateCursorSelected direction model =
-    case model.menuScreenStatus of
+updateCursorSelected : Direction -> MenuScreenStatus -> MenuScreenStatus
+updateCursorSelected direction menuScreenStatus =
+    case menuScreenStatus of
         CharacterConfig status ->
             case status of
                 CharacterScreenWaiting item ->
-                    { model
-                        | menuScreenStatus =
-                            CharacterConfig
-                                (CharacterScreenWaiting
-                                    (characterConfigScreenCursorMoved direction item)
-                                )
-                    }
+                    CharacterConfig
+                        (CharacterScreenWaiting
+                            (characterConfigScreenCursorMoved direction item)
+                        )
 
                 _ ->
-                    model
+                    menuScreenStatus
 
         _ ->
-            model
+            menuScreenStatus
 
 
 drawWindow : Float -> Float -> Float -> Float -> List Canvas.Renderable
