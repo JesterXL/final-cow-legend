@@ -115,6 +115,7 @@ type alias Model =
     , canvasScale : Float
     , canvasBoundingRect : CanvasBoundingRect
     , npcs : Array NPC
+    , characters : Array Character
     }
 
 
@@ -167,6 +168,12 @@ type alias NPC =
     }
 
 
+type alias Character =
+    { id : String
+    , sprite : Texture
+    }
+
+
 type MenuScreenStatus
     = NoMenuScreen
     | SpeechScreen String
@@ -204,6 +211,7 @@ type ItemType
 
 type CharacterScreenStatus
     = CharacterScreenWaiting String
+    | CharacterScreenAbilitiesCharacterSelect (Maybe Character)
     | CharacterScreenAbilities
     | CharacterScreenItems
     | CharacterScreenEquip EquipScreen
@@ -266,6 +274,7 @@ initialModel seed =
     , canvasScale = 0
     , canvasBoundingRect = { x = 0, y = 0, width = 0, height = 0 }
     , npcs = Array.fromList []
+    , characters = Array.fromList []
     }
 
 
@@ -639,13 +648,16 @@ update msg model =
 
                 AButtonPressed ->
                     let
+                        updatedMenuScreenStatus =
+                            confirmMenuChoice model.menuScreenStatus
+
                         _ =
-                            Debug.log "npc" (getTargetNPCCharacterIsFacing model)
+                            Debug.log "updatedMenuScreenStatus" updatedMenuScreenStatus
                     in
                     if model.speaking == False then
                         case getTargetNPCCharacterIsFacing model of
                             Nothing ->
-                                ( model, Cmd.none )
+                                ( { model | menuScreenStatus = updatedMenuScreenStatus }, Cmd.none )
 
                             Just npcFound ->
                                 let
@@ -656,28 +668,23 @@ update msg model =
                                     | speaking = True
                                     , speechText = speechText
                                     , npcs = updateNPCs updatedNPC model.npcs
+                                    , menuScreenStatus = updatedMenuScreenStatus
                                   }
                                 , Cmd.none
                                 )
 
                     else
-                        ( { model | speaking = False }, Cmd.none )
+                        ( { model | speaking = False, menuScreenStatus = updatedMenuScreenStatus }, Cmd.none )
 
                 AButtonReleased ->
                     ( model, Cmd.none )
 
                 BButtonPressed ->
-                    case model.menuScreenStatus of
-                        CharacterConfig status ->
-                            case status of
-                                CharacterScreenWaiting _ ->
-                                    ( { model | menuScreenStatus = NoMenuScreen }, Cmd.none )
-
-                                _ ->
-                                    ( model, Cmd.none )
-
-                        _ ->
-                            ( model, Cmd.none )
+                    let
+                        _ =
+                            Debug.log "canceled menu status" (cancelMenuScreenChoice model.menuScreenStatus)
+                    in
+                    ( { model | menuScreenStatus = cancelMenuScreenChoice model.menuScreenStatus }, Cmd.none )
 
                 BButtonReleased ->
                     ( model, Cmd.none )
@@ -932,6 +939,9 @@ update msg model =
                                                   , responseIndex = 0
                                                   }
                                                 ]
+                                        , characters =
+                                            Array.fromList
+                                                [ { id = "cow", sprite = mapData.sprites.mainCharacterSouth1 } ]
                                       }
                                     , getCanvasBoundingRect ()
                                     )
@@ -1303,7 +1313,7 @@ view model =
                         [ fill (Color.rgb 0 1 0) ]
                         [ rect ( 0, 0 ) gameWidthFloat gameHeightFloat ]
                     ]
-                        ++ characterConfigScreen model sprites
+                        ++ drawMenuScreens model sprites
 
                 _ ->
                     []
@@ -1864,6 +1874,40 @@ characterConfigScreen model sprites =
            ]
 
 
+abilityCharacterSelectWindow : Model -> Sprites -> List Canvas.Renderable
+abilityCharacterSelectWindow model sprites =
+    let
+        windowWidth =
+            120.0
+
+        windowHeight =
+            90
+
+        zeroXY =
+            ( 0, 0 )
+
+        char1 =
+            ( 26, 26 )
+
+        char2 =
+            ( 63, 26 )
+
+        char3 =
+            ( 26, 100 )
+
+        char4 =
+            ( 63, 100 )
+    in
+    []
+        ++ drawWindow
+            0
+            0
+            windowWidth
+            windowHeight
+        ++ [ text char1 "Cow Man"
+           ]
+
+
 characterConfigScreenCursorMoved : Direction -> String -> String
 characterConfigScreenCursorMoved direction selectedNow =
     case direction of
@@ -1927,6 +1971,50 @@ updateCursorSelected direction menuScreenStatus =
             menuScreenStatus
 
 
+confirmMenuChoice : MenuScreenStatus -> MenuScreenStatus
+confirmMenuChoice menuScreenStatus =
+    case menuScreenStatus of
+        CharacterConfig status ->
+            case status of
+                CharacterScreenWaiting item ->
+                    case item of
+                        "Abil" ->
+                            CharacterConfig (CharacterScreenAbilitiesCharacterSelect Nothing)
+
+                        "Item" ->
+                            CharacterConfig CharacterScreenItems
+
+                        "Equip" ->
+                            CharacterConfig (CharacterScreenEquip EquipChooseCharacter)
+
+                        "Save" ->
+                            CharacterConfig CharacterScreenSave
+
+                        _ ->
+                            menuScreenStatus
+
+                _ ->
+                    menuScreenStatus
+
+        _ ->
+            menuScreenStatus
+
+
+cancelMenuScreenChoice : MenuScreenStatus -> MenuScreenStatus
+cancelMenuScreenChoice menuScreenStatus =
+    case menuScreenStatus of
+        CharacterConfig status ->
+            case status of
+                CharacterScreenWaiting _ ->
+                    NoMenuScreen
+
+                _ ->
+                    CharacterConfig (CharacterScreenWaiting "Abil")
+
+        _ ->
+            menuScreenStatus
+
+
 drawWindow : Float -> Float -> Float -> Float -> List Canvas.Renderable
 drawWindow x y width height =
     [ shapes
@@ -1978,3 +2066,46 @@ cursor cursorTexture xy =
         [ Canvas.Settings.Advanced.imageSmoothing False ]
         xy
         cursorTexture
+
+
+drawMenuScreens : Model -> Sprites -> List Canvas.Renderable
+drawMenuScreens model sprites =
+    case model.menuScreenStatus of
+        NoMenuScreen ->
+            []
+
+        SpeechScreen _ ->
+            []
+
+        Inn _ ->
+            []
+
+        WeaponShop _ ->
+            []
+
+        PotionShop _ ->
+            []
+
+        CharacterConfig characterScreenStatus ->
+            case characterScreenStatus of
+                CharacterScreenWaiting _ ->
+                    characterConfigScreen model sprites
+
+                CharacterScreenAbilitiesCharacterSelect _ ->
+                    characterConfigScreen model sprites
+                        ++ abilityCharacterSelectWindow model sprites
+
+                CharacterScreenAbilities ->
+                    characterConfigScreen model sprites
+
+                CharacterScreenItems ->
+                    characterConfigScreen model sprites
+
+                CharacterScreenEquip _ ->
+                    characterConfigScreen model sprites
+
+                CharacterScreenSave ->
+                    characterConfigScreen model sprites
+
+        HouseOfLife _ ->
+            []
