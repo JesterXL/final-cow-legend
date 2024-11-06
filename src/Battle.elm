@@ -4,6 +4,7 @@ import Dict exposing (keys)
 import Random
 
 
+getAttackCow : Int
 getAttackCow =
     4
 
