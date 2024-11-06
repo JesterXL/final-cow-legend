@@ -9,6 +9,7 @@ getAttackCow =
     4
 
 
+getDefenseCow : Int
 getDefenseCow =
     2
 
