@@ -19,6 +19,11 @@ getMagicMoo =
     5
 
 
+getMagicDef : Int
+getMagicDef =
+    1
+
+
 getRandomNumberFromRange : Random.Seed -> Int -> Int -> ( Int, Random.Seed )
 getRandomNumberFromRange seed start end =
     Random.step (Random.int start end) seed
