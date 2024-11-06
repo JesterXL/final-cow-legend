@@ -4,6 +4,10 @@ import Dict exposing (keys)
 import Random
 
 
+getAttackCow =
+    4
+
+
 getRandomNumberFromRange : Random.Seed -> Int -> Int -> ( Int, Random.Seed )
 getRandomNumberFromRange seed start end =
     Random.step (Random.int start end) seed
