@@ -9,6 +9,10 @@ getAttackCow =
     4
 
 
+getDefenseCow =
+    2
+
+
 getRandomNumberFromRange : Random.Seed -> Int -> Int -> ( Int, Random.Seed )
 getRandomNumberFromRange seed start end =
     Random.step (Random.int start end) seed
